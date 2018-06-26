@@ -1,4 +1,4 @@
-# ACES Man-in-the-middle SSH Server
+# Man-in-the-middle SSH Server
 
 ## Configuration
 
@@ -12,20 +12,23 @@
 | server.identifier | String | The SSH server identifier string sent to the SSH client |
 | autoAccess.enabled | Boolean | If true, then enable automatic access to the honeypot after a certain number of login attempts (normal distribution using mean and standard deviation values). Can be manually set in the command line.
 | autoAccess.cacheSize | Integer | Number of attacker IPs to hold when autoAccess is turned "on" . This value is required to not overwhelm the host memory. |
-| autoAccess.mean | Integer | Mean number of login attempts before automatic access |
-| autoAccess.standardDeviation | Integer | Standard Deviation. Automatic access follows a normal distribution.
+| autoAccess.barrier.normalDist.enabled | Boolean | Enable normal distribution to calculate the login attempt threshold per attacker |
+| autoAccess.barrier.normalDist.mean | Integer | Mean number of login attempts before automatic access |
+| autoAccess.barrier.normalDist.standardDeviation | Integer | Standard Deviation. Automatic access follows a normal distribution.
+| autoAccess.barrier.fixed.enabled | Boolean | Enable fixed login attempts threshold |
+| autoAccess.barrier.fixed.attempts | Boolean | Number of login attempts |
 
 ##
 
 ## Start the MITM server
 
 ```bash
-node 
+node /root/mitm/mitm/index.js <port> <container_ip> <container_id> [autoAccessEnable]
 ```
 
 ## Automatic Access
 
-Allows an attacker to successfully authenticate after a certain number of login (password) attempts.
+Allows an attacker to successfully authenticate after a certain number of login attempts.
 
 ## Authors
 Louis-Henri Merino
