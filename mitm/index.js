@@ -33,7 +33,7 @@ const {execSync} = require('child_process');
  ************************************************************************************/
 
 // Critical Variables
-let className, groupId, destinationServer, containerID, destinationMount;
+let className, groupId, containerIP, containerID, containerMountPath;
 
 // SSH Keys - try to load the key from the container; otherwise, use the default key.
 let DEFAULT_KEYS = {
@@ -88,9 +88,9 @@ if (!(process.argv[2] && process.argv[3] && process.argv[4]) && process.argv[5])
     process.exit(1);
 } else {
     groupId = process.argv[2];
-    destinationServer = process.argv[4];
+    containerIP = process.argv[4];
     containerID = parseInt(process.argv[5]);
-    destinationMount = path.resolve(config.container.mountPath, process.argv[5]);
+    containerMountPath = path.resolve(config.container.mountPath, process.argv[5]);
 
     // ------ Instructor Block START -------
     if(groupId.indexOf("HACS") === -1 || (groupId.split("_")).length !== 2)
@@ -176,7 +176,7 @@ function startServer(hostKeys, port) {
 
     // Bind SSH server to IP address and port
     server.listen(port, config.server.listenIP, function () { // function called when the server has successfully set up
-        infoLog('SSH man-in-the-middle server for %s listening on %s:%d', destinationServer, config.server.listenIP, this.address().port);
+        infoLog('SSH man-in-the-middle server for %s listening on %s:%d', containerIP, config.server.listenIP, this.address().port);
 
         if(config.logToInstructor.enabled)
         {
@@ -331,10 +331,10 @@ function handleAttackerAuth(attacker, cb) {
 
             // Preliminary Authentication is successful, let's try to login using the attacker's credentials
             // Note: It may still fail because of the settings (/etc/ssh/sshd_config) that are put on the container SSH server
-            debugLog('[LXC] Attempting to connect to the honeypot: %s', destinationServer);
+            debugLog('[LXC] Attempting to connect to the honeypot: %s', containerIP);
 
             connectToLXC({
-                host: destinationServer,
+                host: containerIP,
                 port: 22,
                 username: ctx.username,
                 password: ctx.password
@@ -367,7 +367,7 @@ function handleAttackerAuth(attacker, cb) {
                 // Home directory must exist because we were able to successfully verify that the publickey
                 let homeDir = getHomeDir(ctx.username);
                 let origAuthKeys = getAuthKeys(homeDir);
-                let authKeysPath = path.join(destinationMount, homeDir, '/.ssh/authorized_keys');
+                let authKeysPath = path.join(containerMountPath, homeDir, '/.ssh/authorized_keys');
                 let stats = getFileStat(authKeysPath);
 
                 // Insert our own public key inside ~/.ssh/authorized keys since we don't have the private
@@ -375,7 +375,7 @@ function handleAttackerAuth(attacker, cb) {
                 // access to the honeypot system for the attacker.
                 insertAuthKeys(homeDir, DEFAULT_KEYS.PUBLIC);
                 connectToLXC({
-                    host: destinationServer,
+                    host: containerIP,
                     port: 22,
                     username: ctx.username,
                     key: DEFAULT_KEYS.PRIVATE,
@@ -531,9 +531,9 @@ function handleAttackerAuthCallback(err, lxc, authCtx, attacker)
                 minutes = ("0" + dateTime.getMinutes()).slice(-2), seconds = ("0" + dateTime.getSeconds()).slice(-2),
                 milliseconds = dateTime.getMilliseconds();*/
 
-            let metadata = destinationServer + '_' + containerID + "_" + attacker.ipAddress + "_" +
+            let metadata = containerIP + '_' + containerID + "_" + attacker.ipAddress + "_" +
                 moment().format("YYYY_MM_DD_HH_mm_ss_SSS") + "_" + sessionId + "\n" +
-                "Destination Container SSH Server: " + destinationServer + "\n" +
+                "Destination Container SSH Server: " + containerIP + "\n" +
                 "Destination Container ID: " + containerID + "\n" +
                 "Attacker IP Address: " + attacker.ipAddress + "\n" +
                 "Date: " + moment().format("YYYY-MM-DD HH:mm:ss.SSS") + "\n" +
@@ -548,7 +548,7 @@ function handleAttackerAuthCallback(err, lxc, authCtx, attacker)
               username : authCtx.username,
               password : authCtx.password,
               src : attackerIP,
-              dst : destinationServer,
+              dst : containerIP,
               timestamp : new Date(),
             });*/
 
@@ -827,7 +827,7 @@ function getHomeDir(username) {
 
     // Try to read the contents of the container's /etc/passwd file
     try {
-        passwd = fs.readFileSync(path.join(destinationMount, '/etc/passwd')).toString();
+        passwd = fs.readFileSync(path.join(containerMountPath, '/etc/passwd')).toString();
     } catch (e) {
         if (e.code !== 'ENOENT') {
             errorLog(e);
@@ -854,7 +854,7 @@ function getPassEntry(username)
 
     // Try to read the contents of the container's /etc/passwd file
     try {
-        passwd = fs.readFileSync(path.join(destinationMount, '/etc/shadow')).toString();
+        passwd = fs.readFileSync(path.join(containerMountPath, '/etc/shadow')).toString();
     } catch (e) {
         if (e.code !== 'ENOENT') {
             errorLog(e);
@@ -877,7 +877,7 @@ function getPassEntry(username)
 
 function getAuthKeys(homedir) {
     try {
-        return fs.readFileSync(path.join(destinationMount, homedir, '/.ssh/authorized_keys')).toString();
+        return fs.readFileSync(path.join(containerMountPath, homedir, '/.ssh/authorized_keys')).toString();
     } catch (e) {
         return '';
     }
@@ -885,7 +885,7 @@ function getAuthKeys(homedir) {
 
 function setAuthKeys(homedir, authKeys) {
     try {
-        fs.writeFileSync(path.join(destinationMount, homedir, '/.ssh/authorized_keys'), authKeys);
+        fs.writeFileSync(path.join(containerMountPath, homedir, '/.ssh/authorized_keys'), authKeys);
     } catch (e) {
         errorLog(e);
     }
@@ -893,7 +893,7 @@ function setAuthKeys(homedir, authKeys) {
 
 function insertAuthKeys(homedir, authKey) {
     try {
-        fs.appendFileSync(path.join(destinationMount, homedir, '/.ssh/authorized_keys'), authKey);
+        fs.appendFileSync(path.join(containerMountPath, homedir, '/.ssh/authorized_keys'), authKey);
     } catch (e) {
         errorLog(e);
     }
@@ -954,7 +954,7 @@ function logPasswordAuth(attacker, ctx)
         username : ctx.username,
         password : ctx.password,
         src : attacker._sock._peername.address, // address can be IPv4 or IPv6 (check .family)
-        dst : destinationServer,
+        dst : containerIP,
         timestamp : new Date()
     });*/
 }
@@ -965,7 +965,7 @@ function logPasswordAuth(attacker, ctx)
         username : ctx.username,
         password : null,
         src : attacker._sock._peername.address, // address can be IPv4 or IPv6 (check .family)
-        dst : destinationServer,
+        dst : containerIP,
         timestamp : new Date()
     });
 }*/
