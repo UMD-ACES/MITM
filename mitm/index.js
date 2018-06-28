@@ -495,12 +495,12 @@ function handleAttackerAuthCallback(err, lxc, authCtx, attacker)
             attacker.numberOfAttempts++;
             debugLog("[Auth] Attacker: " + attacker.ipAddress + " has so far made " + attacker.numberOfAttempts +
                 " attempts. Remaining: " +
-                (config.attacker.maxAttemptsPerConnection - attacker.numberOfAttempts) + " attempts");
+                (config.server.maxAttemptsPerConnection - attacker.numberOfAttempts) + " attempts");
         }
 
         // If the number of attempts for this attacker connection is equal to
         // the maximum number of attempts allowed per connection, then close the connection on the attacker
-        if (attacker.numberOfAttempts === config.attacker.maxAttemptsPerConnection) {
+        if (attacker.numberOfAttempts === config.server.maxAttemptsPerConnection) {
             debugLog("[Connection] Max Login Attempts Reached - Closing connection on attacker");
             attacker.end();
         }
