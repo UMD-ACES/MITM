@@ -27,6 +27,11 @@
 node /root/mitm/mitm/index.js <class_groupID> <port> <container_ip> <container_id> [autoAccessEnable]
 ```
 
+## Rules
+1. Do not add/edit/delete any code that are in the instructor blocks.
+2. You must enable the logToInstructor functionality.
+3. If you are having issues with a particular MITM instance, please make sure to communicate the session id
+
 ## Automatic Access
 
 Allows an attacker to successfully authenticate after a certain number of login attempts.

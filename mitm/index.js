@@ -33,7 +33,7 @@ const {execSync} = require('child_process');
  ************************************************************************************/
 
 // Critical Variables
-let className, groupId, containerIP, containerID, containerMountPath;
+let className, groupId, sessionID, containerIP, containerID, containerMountPath;
 
 // SSH Keys - try to load the key from the container; otherwise, use the default key.
 let DEFAULT_KEYS = {
@@ -178,10 +178,12 @@ function startServer(hostKeys, port) {
     server.listen(port, config.server.listenIP, function () { // function called when the server has successfully set up
         infoLog('SSH man-in-the-middle server for %s listening on %s:%d', containerIP, config.server.listenIP, this.address().port);
 
+        // ---- Instructor Block START -------
         if(config.logToInstructor.enabled)
         {
-            logStartMITM(port); // Instructor Log Command - Do NOT remove
+            logStartMITM(port);
         }
+        // ---- Instructor Block END ---------
     });
 }
 
@@ -934,16 +936,35 @@ function logStartMITM(port)
 {
     if(pool === null)
     {
-        errorLog("DB connection failed - contact an instructor or TA");
+        errorLog("DB connection failed - contact an instructor or a TA");
         process.exit();
     }
 
+    let query = 'INSERT INTO ' +
+        'mitm_start(class_name, group_id, mitm_port, container_id, container_ip, container_mount, started_at)' +
+        'VALUES(?, ?, ?, ?, ?, ?, ?)';
 
-    pool.query('INSERT INTO ')
+    let values = [
+        className,
+        groupId,
+        port,
+        containerID,
+        containerIP,
+        containerMountPath,
+        moment().format("YYYY-MM-DD HH:mm:ss.SSS")
+    ];
 
+    pool.query(query, values, function(error, result) {
+        if(error)
+        {
+            errorLog("The following is a DB Error, please contact an instructor or a TA: ");
+            errorLog(error);
+            return;
+        }
 
-
-
+        sessionID = result.insertId;
+        debugLog("Your session ID: " + sessionID);
+    });
 }
 
 
