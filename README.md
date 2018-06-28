@@ -33,10 +33,8 @@ Allows an attacker to successfully authenticate after a certain number of login 
 
 ## Authors
 Louis-Henri Merino
-
-Contributions:  
-Zhi Xiang Lin  
 Franz Payer
+Zhi Xiang Lin
 
 ## License
 MIT License
