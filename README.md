@@ -32,9 +32,9 @@ node /root/mitm/mitm/index.js <class_groupID> <port> <container_ip> <container_i
 Allows an attacker to successfully authenticate after a certain number of login attempts.
 
 ## Authors
-Louis-Henri Merino
-Franz Payer
-Zhi Xiang Lin
+Louis-Henri Merino  
+Franz Payer  
+Zhi Xiang Lin  
 
 ## License
 MIT License
