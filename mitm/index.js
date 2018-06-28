@@ -33,7 +33,7 @@ const {execSync} = require('child_process');
  ************************************************************************************/
 
 // Critical Variables
-let groupId, destinationServer, destinationCTID, destinationMount;
+let className, groupId, destinationServer, containerID, destinationMount;
 
 // SSH Keys - try to load the key from the container; otherwise, use the default key.
 let DEFAULT_KEYS = {
@@ -89,7 +89,7 @@ if (!(process.argv[2] && process.argv[3] && process.argv[4]) && process.argv[5])
 } else {
     groupId = process.argv[2];
     destinationServer = process.argv[4];
-    destinationCTID = parseInt(process.argv[5]);
+    containerID = parseInt(process.argv[5]);
     destinationMount = path.resolve(config.container.mountPath, process.argv[5]);
 
     // ------ Instructor Block START -------
@@ -98,6 +98,8 @@ if (!(process.argv[2] && process.argv[3] && process.argv[4]) && process.argv[5])
         errorLog("Incorrect Class_GroupID (e.g. HACS200_2A)");
         process.exit();
     }
+    className = (groupId.split("_"))[0];
+    groupId = (groupId.split("_"))[1];
     // ------ Instructor Block END ---------
 
 
@@ -144,14 +146,14 @@ if (!(process.argv[2] && process.argv[3] && process.argv[4]) && process.argv[5])
     if(config.local === false)
     {
         // Mount container if required
-        execSync("python3 " + path.resolve(__dirname, '../lxc/ensure_mount.py') + " -n " + destinationCTID + "", (error, stdout, stderr) => {});
+        execSync("python3 " + path.resolve(__dirname, '../lxc/ensure_mount.py') + " -n " + containerID + "", (error, stdout, stderr) => {});
 
         // makes the attacker session screen output folder if not already created
         initialize.makeOutputFolder(config.attacker.streamOutput);
     }
 
     // loads private and public keys from container if possible
-    initialize.loadKeys(destinationCTID, function (hostKeys) {
+    initialize.loadKeys(containerID, function (hostKeys) {
         startServer(hostKeys, parseInt(process.argv[3]));
     });
 }
@@ -276,12 +278,12 @@ function handleAttackerAuth(attacker, cb) {
                 debugLog("[Auto Access] Compromising the honeypot");
 
                 // add user to the container if it does not exist
-                execSync("python " + path.resolve(__dirname, '../lxc/execute_command.py') + " " + destinationCTID +
+                execSync("python " + path.resolve(__dirname, '../lxc/execute_command.py') + " " + containerID +
                     " useradd " + ctx.username + " -m -s /bin/bash >  /dev/null 2>&1 || true", (error, stdout, stderr) => {});
 
                 // change the password for the supplied username
                 child_process.spawnSync(path.resolve(__dirname, '../lxc/execute_command.py'), [
-                        destinationCTID, 'chpasswd'
+                        containerID, 'chpasswd'
                     ],
                     {
                         input: ctx.username + ':' + ctx.password
@@ -529,10 +531,10 @@ function handleAttackerAuthCallback(err, lxc, authCtx, attacker)
                 minutes = ("0" + dateTime.getMinutes()).slice(-2), seconds = ("0" + dateTime.getSeconds()).slice(-2),
                 milliseconds = dateTime.getMilliseconds();*/
 
-            let metadata = destinationServer + '_' + destinationCTID + "_" + attacker.ipAddress + "_" +
+            let metadata = destinationServer + '_' + containerID + "_" + attacker.ipAddress + "_" +
                 moment().format("YYYY_MM_DD_HH_mm_ss_SSS") + "_" + sessionId + "\n" +
                 "Destination Container SSH Server: " + destinationServer + "\n" +
-                "Destination Container ID: " + destinationCTID + "\n" +
+                "Destination Container ID: " + containerID + "\n" +
                 "Attacker IP Address: " + attacker.ipAddress + "\n" +
                 "Date: " + moment().format("YYYY-MM-DD HH:mm:ss.SSS") + "\n" +
                 "Session ID: " + sessionId + "\n" +
@@ -930,11 +932,14 @@ function setFileTimes(file, atime, mtime) {
  */
 function logStartMITM(port)
 {
-    // Send group ID
+    if(pool === null)
+    {
+        errorLog("DB connection failed - contact an instructor or TA");
+        process.exit();
+    }
 
 
-
-    // Send Timestamp
+    pool.query('INSERT INTO ')
 
 
 
