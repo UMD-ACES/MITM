@@ -8,14 +8,14 @@ module.exports = {
         host: 'X.X.X.X',
         user: 'user',
         password: 'pass',
-        database: 'ssh_mitm',
+        database: 'db',
         connectionLimit : 5
     },
     attacker : {
-        streamOutput : '/root/attacker_sessions',
-        maxAttemptsPerConnection: 6
+        streamOutput : '/root/attacker_sessions'
     },
     server : {
+        maxAttemptsPerConnection: 6,
         listenIP : '0.0.0.0',
         identifier : 'SSH-2.0-OpenSSH_6.6.1p1 Ubuntu-2ubuntu2',
     },
