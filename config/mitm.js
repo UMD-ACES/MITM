@@ -5,10 +5,11 @@ module.exports = {
     debug : true,
     logToInstructor: {
         enabled: false,
-        host: '10.0.X.X',
-        port: 3306,
+        host: 'X.X.X.X',
         user: 'user',
-        pass: 'pass',
+        password: 'pass',
+        database: 'ssh_mitm',
+        connectionLimit : 5
     },
     attacker : {
         streamOutput : '/root/attacker_sessions',

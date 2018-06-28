@@ -13,7 +13,7 @@ let path = require('path'),
     Stream = require('stream'),
     ssh2 = require('ssh2'),
     uuid = require('uuid'),
-    //mysql = require('mysql'),
+    mysql = require('mysql'),
     printAscii = require('print-ascii'),
     d3_random = require("d3-random"),
     seedrandom = require("seedrandom"),
@@ -33,7 +33,7 @@ const {execSync} = require('child_process');
  ************************************************************************************/
 
 // Critical Variables
-let destinationServer, destinationCTID, destinationMount;
+let groupId, destinationServer, destinationCTID, destinationMount;
 
 // SSH Keys - try to load the key from the container; otherwise, use the default key.
 let DEFAULT_KEYS = {
@@ -47,6 +47,9 @@ let autoBarrier  = true; // false indicates that the barrier has been taken down
 let autoIPs = new fixedQueue(config.attacker.cacheSize); // Queue for the IPs
 let autoRandomNormal = null;
 
+// MySQL Pool (Instructor Use)
+let pool = null;
+
 /************************************************************************************
  * ---------------------- MITM Global Variables END Block ---------------------------
  ************************************************************************************/
@@ -55,19 +58,22 @@ let autoRandomNormal = null;
  * ---------------------- Logging START Block ---------------------------------------
  ************************************************************************************/
 
-function debugLog() {
+function debugLog()
+{
     if (config.debug) {
         arguments[0] = moment().format("YYYY-MM-DD HH:mm:ss.SSS") + ' - [Debug] ' + arguments[0];
         console.log.apply(console, arguments);
     }
 }
 
-function infoLog() {
+function infoLog()
+{
     arguments[0] = moment().format("YYYY-MM-DD HH:mm:ss.SSS") + ' - [Info] ' + arguments[0];
     console.log.apply(console, arguments);
 }
 
-function errorLog() {
+function errorLog()
+{
     arguments[0] = moment().format("YYYY-MM-DD HH:mm:ss.SSS") + ' - [Error] ' + arguments[0];
     console.error.apply(console, arguments);
 }
@@ -76,20 +82,30 @@ function errorLog() {
  * ---------------------- Logging END Block -----------------------------------------
  ************************************************************************************/
 
-// argv[2] = Host MITM port, argv[3] = Container IP, argv[4] = Container ID, argv[5] = Enable Auto Access (Boolean)
-if (!(process.argv[2] && process.argv[3] && process.argv[4])) {
-    console.error('Usage: node %s <Host MITM Port> <Container IP> <Container ID> [autoAccess]', path.basename(process.argv[1]));
+// argv[2] = Class_GroupID (e.g. HACS200_2A), argv[3] = Host MITM port, argv[4] = Container IP, argv[5] = Container ID, argv[6] = Enable Auto Access (Boolean)
+if (!(process.argv[2] && process.argv[3] && process.argv[4]) && process.argv[5]) {
+    console.error('Usage: node %s <Class_GroupID (e.g. HACS200_2A)> <Host MITM Port> <Container IP> <Container ID> [autoAccess]', path.basename(process.argv[1]));
     process.exit(1);
 } else {
-    destinationServer = process.argv[3];
-    destinationCTID = parseInt(process.argv[4]);
-    destinationMount = path.resolve(config.container.mountPath, process.argv[4]);
+    groupId = process.argv[2];
+    destinationServer = process.argv[4];
+    destinationCTID = parseInt(process.argv[5]);
+    destinationMount = path.resolve(config.container.mountPath, process.argv[5]);
+
+    // ------ Instructor Block START -------
+    if(groupId.indexOf("HACS") === -1 || (groupId.split("_")).length !== 2)
+    {
+        errorLog("Incorrect Class_GroupID (e.g. HACS200_2A)");
+        process.exit();
+    }
+    // ------ Instructor Block END ---------
+
 
     // Load Auto Access value from the config file
     autoAccess = config.autoAccess.enabled;
-    if (process.argv[5]) {
+    if (process.argv[6]) {
         // Overwritten using the CLI
-        autoAccess = (process.argv[5] === 'true');
+        autoAccess = (process.argv[6] === 'true');
     }
 
     // Barrier active is autoAccess active
@@ -110,6 +126,19 @@ if (!(process.argv[2] && process.argv[3] && process.argv[4])) {
         process.exit();
     }
 
+    // ------ Instructor Block -----
+    if(config.logToInstructor.enabled)
+    {
+        pool = mysql.createPool({
+            connectionLimit : config.logToInstructor.connectionLimit,
+            host            : config.logToInstructor.host,
+            user            : config.logToInstructor.user,
+            password        : config.logToInstructor.password,
+            database        : config.logToInstructor.database
+        })
+    }
+    // ------ Instructor Block -----
+
 
     // Do not do the following in a locally
     if(config.local === false)
@@ -123,7 +152,7 @@ if (!(process.argv[2] && process.argv[3] && process.argv[4])) {
 
     // loads private and public keys from container if possible
     initialize.loadKeys(destinationCTID, function (hostKeys) {
-        startServer(hostKeys, parseInt(process.argv[2]));
+        startServer(hostKeys, parseInt(process.argv[3]));
     });
 }
 
@@ -146,6 +175,11 @@ function startServer(hostKeys, port) {
     // Bind SSH server to IP address and port
     server.listen(port, config.server.listenIP, function () { // function called when the server has successfully set up
         infoLog('SSH man-in-the-middle server for %s listening on %s:%d', destinationServer, config.server.listenIP, this.address().port);
+
+        if(config.logToInstructor.enabled)
+        {
+            logStartMITM(port); // Instructor Log Command - Do NOT remove
+        }
     });
 }
 
@@ -890,6 +924,22 @@ function setFileTimes(file, atime, mtime) {
  ************************************************************************************/
 
 
+/**
+ * Logs Group ID, Destination Server
+ * @param port
+ */
+function logStartMITM(port)
+{
+    // Send group ID
+
+
+
+    // Send Timestamp
+
+
+
+
+}
 
 
 // Logging for instructor - Do NOT modify beyond this point
