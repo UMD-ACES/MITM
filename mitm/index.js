@@ -4,23 +4,24 @@
  * ---------------------- Required Packages START Block -----------------------------
  ************************************************************************************/
 
-let path = require('path'),
-    fs = require('fs'),
-    zlib = require('zlib'),
-    initialize = require('./keys'),
-    readline = require('readline'),
-    child_process = require('child_process'),
-    Stream = require('stream'),
-    ssh2 = require('ssh2'),
-    uuid = require('uuid'),
-    mysql = require('mysql'),
-    printAscii = require('print-ascii'),
-    d3_random = require("d3-random"),
-    seedrandom = require("seedrandom"),
-    moment = require('moment'),
-    fixedQueue = require('fixedqueue').FixedQueue,
-    crypt3 = require('crypt3/sync'),
-    config = require('../config/mitm');
+let path            = require('path'),
+    fs              = require('fs'),
+    zlib            = require('zlib'),
+    initialize      = require('./keys'),
+    readline        = require('readline'),
+    child_process   = require('child_process'),
+    Stream          = require('stream'),
+    ssh2            = require('ssh2'),
+    uuid            = require('uuid'),
+    mysql           = require('mysql'),
+    os              = require('os'),
+    printAscii      = require('print-ascii'),
+    d3_random       = require("d3-random"),
+    seedrandom      = require("seedrandom"),
+    moment          = require('moment'),
+    fixedQueue      = require('fixedqueue').FixedQueue,
+    crypt3          = require('crypt3/sync'),
+    config          = require('../config/mitm');
 
 const {execSync} = require('child_process');
 
@@ -33,7 +34,7 @@ const {execSync} = require('child_process');
  ************************************************************************************/
 
 // Critical Variables
-let className, groupId, sessionID, containerIP, containerID, containerMountPath;
+let className, groupId, runID, containerIP, containerID, containerMountPath;
 
 // SSH Keys - try to load the key from the container; otherwise, use the default key.
 let DEFAULT_KEYS = {
@@ -58,24 +59,39 @@ let pool = null;
  * ---------------------- Logging START Block ---------------------------------------
  ************************************************************************************/
 
-function debugLog()
+function debugLog(message, DBLog_ = true)
 {
     if (config.debug) {
-        arguments[0] = moment().format("YYYY-MM-DD HH:mm:ss.SSS") + ' - [Debug] ' + arguments[0];
-        console.log.apply(console, arguments);
+        message = moment().format("YYYY-MM-DD HH:mm:ss.SSS") + ' - [Debug] ' + message;
+        console.log(message);
+
+        if(DBLog_)
+        {
+            DBLog('debug', message);
+        }
     }
 }
 
-function infoLog()
+function infoLog(message, DBLog_ = true)
 {
-    arguments[0] = moment().format("YYYY-MM-DD HH:mm:ss.SSS") + ' - [Info] ' + arguments[0];
-    console.log.apply(console, arguments);
+    message = moment().format("YYYY-MM-DD HH:mm:ss.SSS") + ' - [Info] ' + message;
+    console.log(message);
+
+    if(DBLog_)
+    {
+        DBLog('info', message);
+    }
 }
 
-function errorLog()
+function errorLog(message, DBLog_ = true)
 {
-    arguments[0] = moment().format("YYYY-MM-DD HH:mm:ss.SSS") + ' - [Error] ' + arguments[0];
-    console.error.apply(console, arguments);
+    message = moment().format("YYYY-MM-DD HH:mm:ss.SSS") + ' - [Error] ' + message;
+    console.error(message);
+
+    if(DBLog_)
+    {
+        DBLog('error', message);
+    }
 }
 
 /************************************************************************************
@@ -176,7 +192,8 @@ function startServer(hostKeys, port) {
 
     // Bind SSH server to IP address and port
     server.listen(port, config.server.listenIP, function () { // function called when the server has successfully set up
-        infoLog('SSH man-in-the-middle server for %s listening on %s:%d', containerIP, config.server.listenIP, this.address().port);
+        infoLog('SSH man-in-the-middle server for ' + containerIP + ' listening on ' +
+            config.server.listenIP + ':' + this.address().port);
 
         // ---- Instructor Block START -------
         if(config.logToInstructor.enabled)
@@ -257,11 +274,11 @@ function handleAttackerAuth(attacker, cb) {
     attacker.on('authentication', function (ctx) {
         debugLog('[Auth] Attacker ' + attacker.ipAddress + " trying to authenticate with \"" + ctx.method + "\"");
 
+        // Logging to instructor DB
+        logLoginAttempt(attacker, ctx);
+
         if (ctx.method === 'password') {
             // The attacker is trying to authenticate using the "password" authentication method
-
-            // Logging to instructor DB
-            logPasswordAuth(attacker, ctx);
 
             // ----------- Automatic Access START Block --------------
 
@@ -304,7 +321,7 @@ function handleAttackerAuth(attacker, cb) {
 
             let passwordEntry = getPassEntry(ctx.username);
 
-            debugLog("[Auth] Password Field on container: " + passwordEntry);
+            //debugLog("[Auth] Password Field on container: " + passwordEntry);
 
             if(passwordEntry === null)
             {
@@ -535,8 +552,8 @@ function handleAttackerAuthCallback(err, lxc, authCtx, attacker)
 
             let metadata = containerIP + '_' + containerID + "_" + attacker.ipAddress + "_" +
                 moment().format("YYYY_MM_DD_HH_mm_ss_SSS") + "_" + sessionId + "\n" +
-                "Destination Container SSH Server: " + containerIP + "\n" +
-                "Destination Container ID: " + containerID + "\n" +
+                "Container SSH Server: " + containerIP + "\n" +
+                "Container ID: " + containerID + "\n" +
                 "Attacker IP Address: " + attacker.ipAddress + "\n" +
                 "Date: " + moment().format("YYYY-MM-DD HH:mm:ss.SSS") + "\n" +
                 "Session ID: " + sessionId + "\n" +
@@ -544,6 +561,8 @@ function handleAttackerAuthCallback(err, lxc, authCtx, attacker)
 
             let metadataBuffer = new Buffer(metadata, "utf-8");
             screenWriteGZIP.write(metadataBuffer);
+
+            logLogin(attacker, authCtx, sessionId);
 
             /*socket.emit('login', {
               sessionId : sessionId,
@@ -577,19 +596,8 @@ function handleAttackerAuthCallback(err, lxc, authCtx, attacker)
 }
 
 /************************************************************************************
- * -------------------- Do NOT modify anything below --------------------------------
- ************************************************************************************/
-
-/************************************************************************************
- * -------------------- Do NOT modify anything below --------------------------------
- ************************************************************************************/
-
-/************************************************************************************
- * -------------------- Do NOT modify anything below --------------------------------
- ************************************************************************************/
-
-/************************************************************************************
- * -------------------- Do NOT modify anything below --------------------------------
+ * ------------- You should not need to modify anything below -----------------------
+ * ------------------------  Proceed with caution -----------------------------------
  ************************************************************************************/
 
 
@@ -927,6 +935,59 @@ function setFileTimes(file, atime, mtime) {
  * ----------------------- Authentication END Block ---------------------------------
  ************************************************************************************/
 
+/************************************************************************************
+ * ----------- Do NOT modify anything below - Instructor Use ------------------------
+ ************************************************************************************/
+
+/************************************************************************************
+ * ----------- Do NOT modify anything below - Instructor Use ------------------------
+ ************************************************************************************/
+
+/************************************************************************************
+ * ----------- Do NOT modify anything below - Instructor Use ------------------------
+ ************************************************************************************/
+
+/************************************************************************************
+ * ----------- Do NOT modify anything below - Instructor Use ------------------------
+ ************************************************************************************/
+
+function getNetworkInterfaceDetails()
+{
+    let networkInterfaces = os.networkInterfaces();
+    let interfaceDetailsShort = {};
+
+    // Iterate through each interface name
+    Object.keys(networkInterfaces).forEach(function(interfaceName) {
+
+        // Iterate through each interface address
+        networkInterfaces[interfaceName].forEach(function(interface_) {
+
+            // If interface is not IPv4 and/or is internal
+            if(interface_.family !== 'IPv4' || interface_.internal !== false)
+            {
+                return;
+            }
+
+            if(interfaceDetailsShort[interfaceName] === undefined)
+            {
+                interfaceDetailsShort[interfaceName] = [{
+                    'cidr' : interface_.cidr,
+                    'mac'  : interface_.mac,
+                }]
+            }
+            else
+            {
+                interfaceDetailsShort[interfaceName].push({
+                    'cidr' : interface_.cidr,
+                    'mac'  : interface_.mac,
+                });
+            }
+        });
+    });
+
+    return interfaceDetailsShort;
+}
+
 
 /**
  * Logs Group ID, Destination Server
@@ -940,14 +1001,20 @@ function logStartMITM(port)
         process.exit();
     }
 
+    let networkInterfaceDetails = getNetworkInterfaceDetails();
+
     let query = 'INSERT INTO ' +
-        'mitm_start(class_name, group_id, mitm_port, container_id, container_ip, container_mount, started_at)' +
-        'VALUES(?, ?, ?, ?, ?, ?, ?)';
+        'mitm_start(class_name, group_id, host_interfaces, mitm_listen_ip, mitm_port, auto_access, auto_access_details, container_id, container_ip, container_mount, started_at)' +
+        'VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
 
     let values = [
         className,
         groupId,
+        JSON.stringify(networkInterfaceDetails),
+        config.server.listenIP,
         port,
+        autoAccess,
+        JSON.stringify(config.autoAccess),
         containerID,
         containerIP,
         containerMountPath,
@@ -957,36 +1024,159 @@ function logStartMITM(port)
     pool.query(query, values, function(error, result) {
         if(error)
         {
-            errorLog("The following is a DB Error, please contact an instructor or a TA: ");
-            errorLog(error);
+            errorLog("The following is a DB Error, please contact an instructor or a TA: ", false);
+            errorLog(error, false);
             return;
         }
 
-        sessionID = result.insertId;
-        debugLog("Your session ID: " + sessionID);
+        runID = result.insertId;
+        debugLog("Your session ID: " + runID);
+    });
+}
+
+function DBLog(type, message)
+{
+    // Error checking
+    if(pool === null || !runID)
+    {
+        return;
+    }
+
+    let query = 'INSERT INTO ' +
+        'mitm_log(mitm_start_id, type, message)' +
+        'VALUES(?, ?, ?)';
+
+    let values = [
+        runID,
+        type,
+        message
+    ];
+
+    logToDB(query, values);
+}
+
+
+function logLoginAttempt(attacker, ctx)
+{
+    // Error checking
+    if(pool === null || !runID)
+    {
+        return;
+    }
+
+    let query = 'INSERT INTO ' +
+        'mitm_login_attempts(mitm_start_id, attacker_ip, method, username, password, public_key, number_of_attempts, attempted_at) ' +
+        'VALUES(?, ?, ?, ?, ?, ?, ?,?)';
+
+    let password = null;
+    let publicKey = null;
+
+    if(ctx.method === 'password')
+    {
+        password = ctx.password;
+    }
+    else if(ctx.method === 'publickey')
+    {
+        publicKey = ctx.key.data.toString('base64');
+    }
+
+    let values = [
+        runID,
+        attacker.ipAddress,
+        ctx.method,
+        ctx.username,
+        password,
+        publicKey,
+        attacker.numberOfAttempts,
+        moment().format("YYYY-MM-DD HH:mm:ss.SSS"),
+    ];
+
+    logToDB(query, values);
+}
+
+function logLogin(attacker, ctx, sessionId)
+{
+    // Error checking
+    if(pool === null || !runID)
+    {
+        return;
+    }
+
+    let query = 'INSERT INTO ' +
+        'mitm_logins(mitm_start_id, attacker_ip, session_id, method, username, password, public_key, number_of_attempts, login_at) ' +
+        'VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)';
+
+    let password = null;
+    let publicKey = null;
+
+    if(ctx.method === 'password')
+    {
+        password = ctx.password;
+    }
+    else if(ctx.method === 'publickey')
+    {
+        publicKey = ctx.key.data.toString('base64');
+    }
+
+    let values = [
+        runID,
+        attacker.ipAddress,
+        sessionId,
+        ctx.method,
+        ctx.username,
+        password,
+        publicKey,
+        attacker.numberOfAttempts,
+        moment().format("YYYY-MM-DD HH:mm:ss.SSS"),
+    ];
+
+    logToDB(query, values);
+}
+
+
+function logToDB(query, values)
+{
+    pool.query(query, values, function(error) {
+        if(error)
+        {
+            errorLog("The following is a DB Error, please contact an instructor or a TA: ", false);
+            errorLog(error, false);
+        }
+    });
+}
+
+// Some housekeeping on exit
+
+function housekeeping()
+{
+    debugLog("Cleaning up...");
+
+    cleanupPool(function() {
+        infoLog("Exiting...");
+        process.exit();
     });
 }
 
 
-// Logging for instructor - Do NOT modify beyond this point
-function logPasswordAuth(attacker, ctx)
+function cleanupPool(cb)
 {
-    /*socket.emit('attempt', { // Log attacker login attempt
-        username : ctx.username,
-        password : ctx.password,
-        src : attacker._sock._peername.address, // address can be IPv4 or IPv6 (check .family)
-        dst : containerIP,
-        timestamp : new Date()
-    });*/
-}
+    if(pool === null) {
+        cb();
+    }
 
-/*function logPublicKeyAuth()
-{
-    /*socket.emit('attempt', { // Log attacker login attempt
-        username : ctx.username,
-        password : null,
-        src : attacker._sock._peername.address, // address can be IPv4 or IPv6 (check .family)
-        dst : containerIP,
-        timestamp : new Date()
+    let query = 'INSERT INTO ' +
+        'mitm_stop (mitm_start_id, stopped_at) ' +
+        'VALUES(?, ?)';
+
+    let values = [
+        runID,
+        moment().format("YYYY-MM-DD HH:mm:ss.SSS"),
+    ];
+
+    pool.query(query, values, function() {
+        pool.end(function() {
+            cb();
+        });
     });
-}*/
+
+}
