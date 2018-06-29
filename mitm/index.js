@@ -36,6 +36,9 @@ const {execSync} = require('child_process');
 // Critical Variables
 let className, groupId, runID, containerIP, containerID, containerMountPath;
 
+// Cleanup Variable
+let cleanup = false;
+
 // SSH Keys - try to load the key from the container; otherwise, use the default key.
 let DEFAULT_KEYS = {
     PRIVATE: fs.readFileSync(path.resolve(__dirname, 'defaultKey')),
@@ -273,6 +276,11 @@ function handleAttackerAuth(attacker, cb) {
     // anonymous function will be called.
     attacker.on('authentication', function (ctx) {
         debugLog('[Auth] Attacker ' + attacker.ipAddress + " trying to authenticate with \"" + ctx.method + "\"");
+
+        fs.readFile('somefile.txt', function (err, data) {
+            if (err) throw err;
+            console.log(data);
+        });
 
         // Logging to instructor DB
         logLoginAttempt(attacker, ctx);
@@ -1147,33 +1155,68 @@ function logToDB(query, values)
 
 // Some housekeeping on exit
 
-function housekeeping()
-{
-    debugLog("Cleaning up...");
+process.on('exit', function() {
+    housekeeping("exit");
+});
+process.on('SIGINT', function() {
+    housekeeping("SIGINT");
+});
+process.on('SIGUSR1', function() {
+    housekeeping("SIGUSR1");
+});
+process.on('SIGUSR2', function() {
+    housekeeping("SIGUSR2");
+});
+process.on('uncaughtException', function(err) {
+    housekeeping("UncaughtException", err.message)
+});
 
-    cleanupPool(function() {
-        infoLog("Exiting...");
-        process.exit();
-    });
+function housekeeping(type, details = null)
+{
+    infoLog("Exiting...");
+
+    if(cleanup === false)
+    {
+        cleanup = true;
+        debugLog("Cleaning up...", false);
+
+        if(details !== null)
+        {
+            errorLog("Exception occurred: ", false);
+            console.log(details);
+        }
+
+        cleanupPool(type, details, function() {
+            process.exit();
+        });
+    }
 }
 
 
-function cleanupPool(cb)
+function cleanupPool(type, details, cb)
 {
     if(pool === null) {
         cb();
+        return;
     }
 
     let query = 'INSERT INTO ' +
-        'mitm_stop (mitm_start_id, stopped_at) ' +
-        'VALUES(?, ?)';
+        'mitm_stop (mitm_start_id, exit_type, exit_details, stopped_at) ' +
+        'VALUES(?, ?, ?, ?)';
 
     let values = [
         runID,
+        type,
+        details,
         moment().format("YYYY-MM-DD HH:mm:ss.SSS"),
     ];
 
-    pool.query(query, values, function() {
+    pool.query(query, values, function(error) {
+        if(error)
+        {
+            errorLog("DB Error:" + error);
+        }
+
         pool.end(function() {
             cb();
         });
