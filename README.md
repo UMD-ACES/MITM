@@ -17,7 +17,7 @@
 | autoAccess.barrier.normalDist.mean | Integer | Mean number of login attempts before automatic access |
 | autoAccess.barrier.normalDist.standardDeviation | Integer | Standard Deviation. Automatic access follows a normal distribution. |
 | autoAccess.barrier.fixed.enabled | Boolean | Enable fixed login attempts threshold |
-| autoAccess.barrier.fixed.attempts | Boolean | Number of login attempts |
+| autoAccess.barrier.fixed.attempts | Number | Number of login attempts |
 
 ##
 
