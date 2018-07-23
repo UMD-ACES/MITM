@@ -236,7 +236,7 @@ function handleAttackerConnection(attacker) {
 
     // Get the IP address of the attacker (the client end of the connection)
     let ipAddress = attacker._sock._peername.address;
-    debugLog('[Connection] Attacker connected: %s', ipAddress);
+    debugLog('[Connection] Attacker connected: ' + ipAddress);
 
     // When attacker exits before he or she has authenticated
     attacker.on('end', attackerEndBeforeAuthenticated);
@@ -276,11 +276,6 @@ function handleAttackerAuth(attacker, cb) {
     // anonymous function will be called.
     attacker.on('authentication', function (ctx) {
         debugLog('[Auth] Attacker ' + attacker.ipAddress + " trying to authenticate with \"" + ctx.method + "\"");
-
-        fs.readFile('somefile.txt', function (err, data) {
-            if (err) throw err;
-            console.log(data);
-        });
 
         // Logging to instructor DB
         logLoginAttempt(attacker, ctx);
@@ -358,7 +353,7 @@ function handleAttackerAuth(attacker, cb) {
 
             // Preliminary Authentication is successful, let's try to login using the attacker's credentials
             // Note: It may still fail because of the settings (/etc/ssh/sshd_config) that are put on the container SSH server
-            debugLog('[LXC] Attempting to connect to the honeypot: %s', containerIP);
+            debugLog('[LXC] Attempting to connect to the honeypot: ' + containerIP);
 
             connectToLXC({
                 host: containerIP,
@@ -639,7 +634,7 @@ function handleAttackerSession(attacker, lxc, sessionId, screenWriteStream) {
 
     // Non-interactive mode
     attacker.on('exec', function (accept, reject, info) {
-        debugLog('[EXEC] Noninteractive mode attacker command: %s', info.command);
+        debugLog('[EXEC] Noninteractive mode attacker command: ' + info.command);
         // Log command to DB
         /*socket.emit('command', {
           sessionId : sessionId,
@@ -1173,10 +1168,9 @@ process.on('uncaughtException', function(err) {
 
 function housekeeping(type, details = null)
 {
-    infoLog("Exiting...");
-
     if(cleanup === false)
     {
+        infoLog("Exiting...");
         cleanup = true;
         debugLog("Cleaning up...", false);
 
