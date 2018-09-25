@@ -24,7 +24,7 @@
 ## Start the MITM server
 
 ```bash
-node /root/mitm/mitm/index.js <class_groupID> <port> <container_ip> <container_id> [autoAccessEnable]
+node /root/MITM/mitm/index.js <class_groupID> <port> <container_ip> <container_id> [autoAccessEnable]
 ```
 
 ## Rules
