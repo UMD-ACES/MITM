@@ -32,6 +32,9 @@ node /root/MITM/mitm/index.js <class_groupID> <port> <container_ip> <container_i
 2. You must enable the logToInstructor functionality.
 3. If you are having issues with a particular MITM instance, please make sure to communicate the session id
 
+## Stay up to date
+`git pull origin master` inside the /root/MITM directory.
+
 ## Automatic Access
 
 Allows an attacker to successfully authenticate after a certain number of login attempts.
