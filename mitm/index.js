@@ -48,11 +48,14 @@ let DEFAULT_KEYS = {
 // Automatic Access Variables
 let autoAccess = false;
 let autoBarrier  = true; // false indicates that the barrier has been taken down so the login attempt will be successful.
-let autoIPs = new fixedQueue(config.attacker.cacheSize); // Queue for the IPs
+let autoIPs = new fixedQueue(config.autoAccess.cacheSize); // Queue for the IPs
 let autoRandomNormal = null;
 
 // MySQL Pool (Instructor Use)
 let pool = null;
+
+// Logging files
+var loginAttempts, logins, delimiter = ';';
 
 /************************************************************************************
  * ---------------------- MITM Global Variables END Block ---------------------------
@@ -161,14 +164,19 @@ if (!(process.argv[2] && process.argv[3] && process.argv[4]) && process.argv[5])
     // ------ Instructor Block -----
 
 
-    // Do not do the following in a locally
+    // Do not do the following locally
     if(config.local === false)
     {
         // Mount container if required
         execSync("python3 " + path.resolve(__dirname, '../lxc/ensure_mount.py') + " -n " + containerID + "", (error, stdout, stderr) => {});
 
         // makes the attacker session screen output folder if not already created
-        initialize.makeOutputFolder(config.attacker.streamOutput);
+        initialize.makeOutputFolder(config.logging.streamOutput);
+        initialize.makeOutputFolder(config.logging.loginAttempts);
+        initialize.makeOutputFolder(config.logging.logins);
+
+        loginAttempts   = fs.createWriteStream(path.resolve(config.logging.loginAttempts, containerID + ".txt"), {flags:'a'});
+        logins          = fs.createWriteStream(path.resolve(config.logging.logins, containerID + ".txt"), {flags:'a'});
     }
 
     // loads private and public keys from container if possible
@@ -283,6 +291,10 @@ function handleAttackerAuth(attacker, cb) {
         if (ctx.method === 'password') {
             // The attacker is trying to authenticate using the "password" authentication method
 
+            // Logging to student file
+            loginAttempts.write(moment().format("YYYY-MM-DD HH:mm:ss.SSS") + delimiter + attacker.ipAddress + delimiter +
+                ctx.method + delimiter + ctx.username + delimiter + ctx.password + "\n");
+
             // ----------- Automatic Access START Block --------------
 
             // Handle Attempt if automatic access is enabled
@@ -303,13 +315,12 @@ function handleAttackerAuth(attacker, cb) {
                 execSync("python " + path.resolve(__dirname, '../lxc/execute_command.py') + " " + containerID +
                     " useradd " + ctx.username + " -m -s /bin/bash >  /dev/null 2>&1 || true", (error, stdout, stderr) => {});
 
-                // change the password for the supplied username
-                child_process.spawnSync(path.resolve(__dirname, '../lxc/execute_command.py'), [
-                        containerID, 'chpasswd'
-                    ],
-                    {
-                        input: ctx.username + ':' + ctx.password
-                    });
+                debugLog("[Auto Access] Adding the following credentials: \""
+                    + ctx.username + ":" + ctx.password +"\"");
+
+                execSync("python " + path.resolve(__dirname, '../lxc/execute_command.py') + " " + containerID +
+                    " usermod -p `openssl passwd " + ctx.password + "` " + ctx.username);
+
 
             } else if (autoAccess === true && autoBarrier === true) {
                 // Barrier has not yet been broken
@@ -332,7 +343,7 @@ function handleAttackerAuth(attacker, cb) {
                 return;
             }
 
-            if(passwordEntry === '*')
+            if(passwordEntry === '*' || passwordEntry === '!')
             {
                 cb("Invalid credentials - Container user is disabled", undefined, ctx, attacker);
                 return;
@@ -381,6 +392,10 @@ function handleAttackerAuth(attacker, cb) {
         // Cannot fetch public keys from container when container does not exist (config.local = true)
         else if (ctx.method === 'publickey' && config.local === false) {
             // The attacker is trying to authenticate using the "publickey" authentication method
+
+            // Logging to student file
+            loginAttempts.write(moment().format("YYYY-MM-DD HH:mm:ss.SSS") + delimiter + attacker.ipAddress + delimiter +
+                ctx.method + delimiter + ctx.username + delimiter + ctx.key.data.toString('base64') + "\n");
 
             // Verify that the public key sent by the attacker matches one of the public keys in the
             // ~/.ssh/authorized_keys. Note: ~ is the home directory of the supplied username
@@ -500,7 +515,7 @@ function handleAttackerAuthCallback(err, lxc, authCtx, attacker)
 {
     // If an error has occurred with authentication (e.g. Invalid credentials)
     if (err) {
-        debugLog('[Auth] Attacker authentication error: ', err);
+        debugLog('[Auth] Attacker authentication error: ' + err);
 
         try {
             // The MITM SSH server will reject the credentials with the available authentication methods
@@ -541,7 +556,7 @@ function handleAttackerAuthCallback(err, lxc, authCtx, attacker)
 
             // make a session screen output stream
             let screenWriteOutputStream = fs.createWriteStream(
-                path.resolve(config.attacker.streamOutput, sessionId + '.gz')
+                path.resolve(config.logging.streamOutput, sessionId + '.gz')
             );
 
             // Make a Gzip handler to automatically compress the file on the fly
@@ -565,16 +580,12 @@ function handleAttackerAuthCallback(err, lxc, authCtx, attacker)
             let metadataBuffer = new Buffer(metadata, "utf-8");
             screenWriteGZIP.write(metadataBuffer);
 
+            // Log to instructor DB
             logLogin(attacker, authCtx, sessionId);
 
-            /*socket.emit('login', {
-              sessionId : sessionId,
-              username : authCtx.username,
-              password : authCtx.password,
-              src : attackerIP,
-              dst : containerIP,
-              timestamp : new Date(),
-            });*/
+            // Log to student file
+            logins.write(moment().format("YYYY-MM-DD HH:mm:ss.SSS") + delimiter + attacker.ipAddress + delimiter +
+                sessionId + "\n");
 
             attacker.once('session', function (accept) {
                 let session = accept();
@@ -587,10 +598,6 @@ function handleAttackerAuthCallback(err, lxc, authCtx, attacker)
                 lxc.end();
                 screenWriteGZIP.end(); // end attacker session screen output write stream
                 // Log sign out event
-                /*socket.emit('logout', {
-                  sessionId : sessionId,
-                  timestamp : new Date()
-                });*/
             });
         });
         // Disconnect LXC client when attacker closes window
@@ -690,7 +697,7 @@ function handleAttackerSession(attacker, lxc, sessionId, screenWriteStream) {
 
             reader.on('line', function (line) {
                 debugLog('[SHELL] line from reader: ' + line.toString());
-                debugLog('[SHELL] Keystroke buffer: ', keystrokeBuffer);
+                debugLog('[SHELL] Keystroke buffer: ' + keystrokeBuffer);
                 /*socket.emit('command', {
                   sessionId : sessionId,
                   line : line,
@@ -1182,6 +1189,8 @@ function housekeeping(type, details = null)
 
         cleanupPool(type, details, function() {
             process.exit();
+            logins.end();
+            loginAttempts.end();
         });
     }
 }
