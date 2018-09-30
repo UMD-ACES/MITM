@@ -20,8 +20,10 @@ let path            = require('path'),
     seedrandom      = require("seedrandom"),
     moment          = require('moment'),
     fixedQueue      = require('fixedqueue').FixedQueue,
-    crypt3          = require('crypt3/sync'),
-    config          = require('../config/mitm');
+    crypt3          = require('crypt3/sync');
+
+let config;
+let version = 1.01
 
 const {execSync} = require('child_process');
 
@@ -48,7 +50,7 @@ let DEFAULT_KEYS = {
 // Automatic Access Variables
 let autoAccess = false;
 let autoBarrier  = true; // false indicates that the barrier has been taken down so the login attempt will be successful.
-let autoIPs = new fixedQueue(config.autoAccess.cacheSize); // Queue for the IPs
+let autoIPs; // Queue for the IPs
 let autoRandomNormal = null;
 
 // MySQL Pool (Instructor Use)
@@ -104,7 +106,9 @@ function errorLog(message, DBLog_ = true)
  * ---------------------- Logging END Block -----------------------------------------
  ************************************************************************************/
 
-// argv[2] = Class_GroupID (e.g. HACS200_2A), argv[3] = Host MITM port, argv[4] = Container IP, argv[5] = Container ID, argv[6] = Enable Auto Access (Boolean)
+infoLog('MITM Version: ' + version);
+
+// argv[2] = Class_GroupID (e.g. HACS200_2A), argv[3] = Host MITM port, argv[4] = Container IP, argv[5] = Container ID, argv[6] = Force Enable/Disable Auto Access (Boolean), argv[7] = Specify MITM config file
 if (!(process.argv[2] && process.argv[3] && process.argv[4]) && process.argv[5]) {
     console.error('Usage: node %s <Class_GroupID (e.g. HACS200_2A)> <Host MITM Port> <Container IP> <Container ID> [autoAccess]', path.basename(process.argv[1]));
     process.exit(1);
@@ -112,7 +116,6 @@ if (!(process.argv[2] && process.argv[3] && process.argv[4]) && process.argv[5])
     groupId = process.argv[2];
     containerIP = process.argv[4];
     containerID = parseInt(process.argv[5]);
-    containerMountPath = path.resolve(config.container.mountPath, process.argv[5]);
 
     // ------ Instructor Block START -------
     if(groupId.indexOf("HACS") === -1 || (groupId.split("_")).length !== 2)
@@ -124,6 +127,16 @@ if (!(process.argv[2] && process.argv[3] && process.argv[4]) && process.argv[5])
     groupId = (groupId.split("_"))[1];
     // ------ Instructor Block END ---------
 
+    // Load MITM config file
+    if(process.argv[7]) {
+        config = require('../config/' + process.argv[7]);
+    }
+    else {
+        config = require('../config/mitm.js');
+    }
+
+    autoIPs = new fixedQueue(config.autoAccess.cacheSize);
+    containerMountPath = path.resolve(config.container.mountPath, process.argv[5]);
 
     // Load Auto Access value from the config file
     autoAccess = config.autoAccess.enabled;

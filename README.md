@@ -24,7 +24,7 @@
 ## Start the MITM server
 
 ```bash
-node /root/MITM/mitm/index.js <class_groupID> <port> <container_ip> <container_id> [autoAccessEnable]
+node /root/MITM/mitm/index.js <class_groupID> <port> <container_ip> <container_id> [autoAccessEnable] [config file]
 ```
 
 ## Rules
@@ -34,6 +34,9 @@ node /root/MITM/mitm/index.js <class_groupID> <port> <container_ip> <container_i
 
 ## Stay up to date
 `git pull origin master` inside the /root/MITM directory.
+
+## View wiki
+[Wiki Page](https://github.com/UMD-ACES/MITM/wiki)
 
 ## Automatic Access
 
