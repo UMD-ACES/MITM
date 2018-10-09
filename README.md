@@ -34,7 +34,7 @@ Example B:
 ```bash
 node /root/MITM/mitm/index.js HACS20X_Test 10000 172.20.0.2 101 true
 ```
-Example C (view setting up multiple config files [here](https://github.com/UMD-ACES/MITM/wiki/Multiple-config-files])):
+Example C (view setting up multiple config files [here](https://github.com/UMD-ACES/MITM/wiki/Multiple-config-files)):
 ```bash
 node /root/MITM/mitm/index.js HACS20X_Test 10000 172.20.0.2 101 true mitm2.js
 ```
