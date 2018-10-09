@@ -28,15 +28,15 @@ node /root/MITM/mitm/index.js <class_groupID> <port> <container_ip> <container_i
 ```
 Example A:  
 ```bash
-node /root/MITM/mitm/index.js HACS20X_Test 10000 172.20.0.2 101
+node /root/MITM/mitm/index.js HACS200_1A 10000 172.20.0.2 101
 ```
 Example B:  
 ```bash
-node /root/MITM/mitm/index.js HACS20X_Test 10000 172.20.0.2 101 true
+node /root/MITM/mitm/index.js HACS200_1A 10000 172.20.0.2 101 true
 ```
 Example C (view setting up multiple config files [here](https://github.com/UMD-ACES/MITM/wiki/Multiple-config-files)):
 ```bash
-node /root/MITM/mitm/index.js HACS20X_Test 10000 172.20.0.2 101 true mitm2.js
+node /root/MITM/mitm/index.js HACS200_1A 10000 172.20.0.2 101 true mitm2.js
 ```
 
 ## Rules
