@@ -25,6 +25,7 @@ let path            = require('path'),
 let config;
 let version = 1.01
 
+const {spawnSync} = require('child_process');
 const {execSync} = require('child_process');
 
 /************************************************************************************
@@ -181,7 +182,9 @@ if (!(process.argv[2] && process.argv[3] && process.argv[4]) && process.argv[5])
     if(config.local === false)
     {
         // Mount container if required
-        execSync("python3 " + path.resolve(__dirname, '../lxc/ensure_mount.py') + " -n " + containerID + "", (error, stdout, stderr) => {});
+        //execSync("python3 " + path.resolve(__dirname, '../lxc/ensure_mount.py') + " -n " + containerID + "", (error, stdout, stderr) => {});
+        spawnSync("python3", [path.resolve(__dirname, '../lxc/ensure_mount.py'), "-n", containerID]);
+
 
         // makes the attacker session screen output folder if not already created
         initialize.makeOutputFolder(config.logging.streamOutput);
@@ -324,16 +327,22 @@ function handleAttackerAuth(attacker, cb) {
 
                 debugLog("[Auto Access] Compromising the honeypot");
 
-                // add user to the container if it does not exist
-                execSync("python " + path.resolve(__dirname, '../lxc/execute_command.py') + " " + containerID +
-                    " useradd " + ctx.username + " -m -s /bin/bash >  /dev/null 2>&1 || true", (error, stdout, stderr) => {});
-
                 debugLog("[Auto Access] Adding the following credentials: \""
                     + ctx.username + ":" + ctx.password +"\"");
 
-                execSync("python " + path.resolve(__dirname, '../lxc/execute_command.py') + " " + containerID +
-                    " usermod -p `openssl passwd " + ctx.password + "` " + ctx.username);
+                ctx.username = ctx.username.replace(';', '').replace("'", ''); // Preliminary Caution
+                ctx.password = ctx.password.replace(';', '').replace("'", ''); // Preliminary Caution
 
+                // Add user to the container if it does not exist
+                // Not successful if the user tries to do command injection
+                // SpawnSync and php script handles command injection
+                spawnSync("php", [path.resolve(__dirname, '../lxc/add_user.php'),
+                   containerID, ctx.username]);
+
+                // Load the credentials
+                // Again not successful if the attacker uses command injection
+                spawnSync("php", [path.resolve(__dirname, '../lxc/load_credentials.php'),
+                   containerID, ctx.username, ctx.password]);
 
             } else if (autoAccess === true && autoBarrier === true) {
                 // Barrier has not yet been broken
@@ -1181,6 +1190,9 @@ process.on('SIGUSR1', function() {
 });
 process.on('SIGUSR2', function() {
     housekeeping("SIGUSR2");
+});
+process.on('SIGTERM', function() {
+    housekeeping("SIGTERM");
 });
 process.on('uncaughtException', function(err) {
     housekeeping("UncaughtException", err.message)

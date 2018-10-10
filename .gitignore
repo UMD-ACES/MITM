@@ -20,4 +20,5 @@ node_modules/*
 # MITM Config
 # --------------------
 # Ignore the real mitm.js file
-config/mitm.js
+config/mitm*.js
+!config/mitm_example.js
