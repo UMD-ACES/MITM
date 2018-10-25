@@ -23,7 +23,7 @@ let path            = require('path'),
     crypt3          = require('crypt3/sync');
 
 let config;
-let version = 1.2;
+let version = 1.21;
 
 const {spawnSync} = require('child_process');
 const {execSync} = require('child_process');
@@ -590,11 +590,25 @@ function handleAttackerAuthCallback(err, lxc, authCtx, attacker)
                 minutes = ("0" + dateTime.getMinutes()).slice(-2), seconds = ("0" + dateTime.getSeconds()).slice(-2),
                 milliseconds = dateTime.getMilliseconds();*/
 
+            let credential = null;
+
+            if(authCtx.method === 'password')
+            {
+                credential = authCtx.password;
+            }
+            else if(authCtx.method === 'publickey')
+            {
+                credential = authCtx.key.data.toString('base64');
+            }
+
             let metadata = containerIP + '_' + containerID + "_" + attacker.ipAddress + "_" +
                 moment().format("YYYY_MM_DD_HH_mm_ss_SSS") + "_" + sessionId + "\n" +
                 "Container SSH Server: " + containerIP + "\n" +
                 "Container ID: " + containerID + "\n" +
                 "Attacker IP Address: " + attacker.ipAddress + "\n" +
+                "Login Method: " + authCtx.method + "\n" +
+                "Attacker Username: " + authCtx.username + "\n" +
+                "Attacker Password: " + credential + "\n" +
                 "Date: " + moment().format("YYYY-MM-DD HH:mm:ss.SSS") + "\n" +
                 "Session ID: " + sessionId + "\n" +
                 "-------- Attacker Stream Below ---------\n";
