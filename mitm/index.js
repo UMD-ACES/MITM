@@ -23,7 +23,7 @@ let path            = require('path'),
     crypt3          = require('crypt3/sync');
 
 let config;
-let version = 1.21;
+let version = 1.22;
 
 const {spawnSync} = require('child_process');
 const {execSync} = require('child_process');
@@ -215,6 +215,7 @@ function startServer(hostKeys, port) {
     let server = new ssh2.Server({
         hostKeys: hostKeys,
         ident: config.server.identifier, // Identifier sent to the client
+        banner: config.server.banner
     }, handleAttackerConnection);
 
     // Bind SSH server to IP address and port

@@ -11,6 +11,7 @@
 | server.maxAttemptsPerConnection | Integer | Number of login attempts before the server force closes on the SSH client |
 | server.listenIP | String | The IP address to listen on |
 | server.identifier | String | The SSH server identifier string sent to the SSH client |
+| server.banner | String | A message sent to clients upon connection to the MITM |
 | autoAccess.enabled | Boolean | If true, then enable automatic access to the honeypot after a certain number of login attempts (normal distribution using mean and standard deviation values). Can be manually set in the command line. |
 | autoAccess.cacheSize | Integer | Number of attacker IPs to hold when autoAccess is turned "on" . This value is required to not overwhelm the host memory. |
 | autoAccess.barrier.normalDist.enabled | Boolean | Enable normal distribution to calculate the login attempt threshold per attacker |

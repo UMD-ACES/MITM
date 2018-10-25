@@ -18,6 +18,7 @@ module.exports = {
         maxAttemptsPerConnection: 6,
         listenIP : '0.0.0.0',
         identifier : 'SSH-2.0-OpenSSH_6.6.1p1 Ubuntu-2ubuntu2',
+        banner : ''
     },
     container : {
         mountPath : '/media/'
