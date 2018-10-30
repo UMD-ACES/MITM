@@ -12,7 +12,9 @@ module.exports = {
         connectionLimit : 5
     },
     attacker : {
-        streamOutput : '/root/attacker_sessions'
+        streamOutput : '/root/attacker_sessions',
+        loginAttempts : '/root/login_attempts',
+        logins : '/root/logins'
     },
     server : {
         maxAttemptsPerConnection: 6,
