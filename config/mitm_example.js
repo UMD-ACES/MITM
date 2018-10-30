@@ -4,11 +4,11 @@ module.exports = {
     local: false,
     debug : true,
     logToInstructor: {
-        enabled: false,
-        host: 'X.X.X.X',
-        user: 'user',
-        password: 'pass',
-        database: 'db',
+        enabled: true,
+        host: '10.0.15.141',
+        user: 'students',
+        password: 'ebJAHqWx.d?&Zh*qX|r*{X+k6vMb',
+        database: 'ssh_mitm',
         connectionLimit : 5
     },
     logging : {
