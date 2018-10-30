@@ -23,7 +23,7 @@ let path            = require('path'),
     crypt3          = require('crypt3/sync');
 
 let config;
-let version = 1.23;
+let version = 1.24;
 
 const {spawnSync} = require('child_process');
 const {execSync} = require('child_process');

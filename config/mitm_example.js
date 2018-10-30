@@ -11,7 +11,7 @@ module.exports = {
         database: 'db',
         connectionLimit : 5
     },
-    attacker : {
+    logging : {
         streamOutput : '/root/attacker_sessions',
         loginAttempts : '/root/login_attempts',
         logins : '/root/logins'
