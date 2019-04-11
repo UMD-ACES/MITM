@@ -7,7 +7,9 @@
 | local | Boolean | Runs the MITM SSH Server without requiring a container. Warning messages will display and there will be limitations (e.g. pty mode is disabled). |
 | debug   | Boolean | MITM Debug Output. Good option to have enabled when building your honeypot ecosystem. Provides detailed logs of the actions that the MITM takes in real time. |
 | logToInstructor.enabled | Boolean | Logging the MITM operations into a DB (must be **enabled** unless otherwise stated by an instructor or TA) |
-| attacker.streamOutput | String | Folder where the attacker output streams are placed |
+| logging.streamOutput | String | Folder where the attacker streams are placed (keystrokes, screen display) |
+| logging.loginAttempts | String | Folder where all login attempts are being logged |
+| logging.logins | String | Folder where all logins are being logged |
 | server.maxAttemptsPerConnection | Integer | Number of login attempts before the server force closes on the SSH client |
 | server.listenIP | String | The IP address to listen on |
 | server.identifier | String | The SSH server identifier string sent to the SSH client |
