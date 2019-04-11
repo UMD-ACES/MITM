@@ -12,7 +12,10 @@ module.exports = {
         connectionLimit : 5
     },
     container : {
-        mountPath : '/var/lib/lxc/'
+        mountPath: {
+            prefix: '/var/lib/lxc/',
+            suffix: 'rootfs'
+        },
     },
     logging : {
         streamOutput : '/root/data/attacker_sessions',
