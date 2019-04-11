@@ -23,7 +23,7 @@ let path            = require('path'),
     crypt3          = require('crypt3/sync');
 
 let config;
-let version = 1.24;
+let version = 1.25;
 
 const {spawnSync} = require('child_process');
 const {execSync} = require('child_process');
@@ -137,7 +137,7 @@ if (!(process.argv[2] && process.argv[3] && process.argv[4]) && process.argv[5])
     }
 
     autoIPs = new fixedQueue(config.autoAccess.cacheSize);
-    containerMountPath = path.resolve(config.container.mountPath, process.argv[5]);
+    containerMountPath = path.resolve(config.container.mountPath.prefix, process.argv[5], config.container.mountPath.suffix);
 
     // Load Auto Access value from the config file
     autoAccess = config.autoAccess.enabled;
@@ -196,7 +196,7 @@ if (!(process.argv[2] && process.argv[3] && process.argv[4]) && process.argv[5])
     }
 
     // loads private and public keys from container if possible
-    initialize.loadKeys(containerID, function (hostKeys) {
+    initialize.loadKeys(containerMountPath, containerID, function (hostKeys) {
         startServer(hostKeys, parseInt(process.argv[3]));
     });
 }
@@ -242,8 +242,9 @@ process.on('disconnect', function () {
  * @static
  * @method
  * @param {Object} attacker - SSH2 Client Object
+ * @param {Object} info - SSH2 Info Object
  */
-function handleAttackerConnection(attacker) {
+function handleAttackerConnection(attacker, info) {
 
     attacker.on('error', function (err) {
         // If/when an error occurs on this attacker object, then this anonymous function will be called
@@ -254,14 +255,14 @@ function handleAttackerConnection(attacker) {
     });
 
     // Sanity check
-    if (attacker._sock._peername === undefined || attacker._sock._peername === null) {
+    if (attacker._sock._peername === undefined || attacker._sock._peername === null || info.ip === null) {
         debugLog("[Connection] Socket Error");
         return;
     }
 
     // Get the IP address of the attacker (the client end of the connection)
-    let ipAddress = attacker._sock._peername.address;
-    debugLog('[Connection] Attacker connected: ' + ipAddress);
+    let ipAddress = info.ip;
+    debugLog('[Connection] Attacker connected: ' + ipAddress + " | Client Identification: " + info.header.identRaw);
 
     // When attacker exits before he or she has authenticated
     attacker.on('end', attackerEndBeforeAuthenticated);
@@ -376,6 +377,10 @@ function handleAttackerAuth(attacker, cb) {
                 if( crypt3(ctx.password, passwordEntry) !== passwordEntry ) {
                     cb("Invalid credentials - Password Authentication Failure", undefined, ctx, attacker);
                     return;
+                }
+                else if(crypt3(ctx.password, passwordEntry) === passwordEntry)
+                {
+                    debugLog("[Auth] Valid credentials - Password Authentication");
                 }
             } catch(err)
             {
@@ -574,7 +579,7 @@ function handleAttackerAuthCallback(err, lxc, authCtx, attacker)
             // Remove previous event listener for when attacker closed the connection
             attacker.removeListener('end', attackerEndBeforeAuthenticated);
 
-            debugLog('[Auth] Attacker authenticated');
+            debugLog('[LXC-Auth] Attacker authenticated and is inside container');
             let sessionId = uuid.v1(); // assign UUID
 
             // make a session screen output stream
@@ -614,7 +619,7 @@ function handleAttackerAuthCallback(err, lxc, authCtx, attacker)
                 "Session ID: " + sessionId + "\n" +
                 "-------- Attacker Stream Below ---------\n";
 
-            let metadataBuffer = new Buffer(metadata, "utf-8");
+            let metadataBuffer = new Buffer.from(metadata, "utf-8");
             screenWriteGZIP.write(metadataBuffer);
 
             // Log to instructor DB
@@ -689,7 +694,7 @@ function handleAttackerSession(attacker, lxc, sessionId, screenWriteStream) {
 
         let execStatement = 'Noninteractive mode attacker command: ' + info.command + '\n--------- Output Below -------\n';
 
-        let execStatementBuffer = new Buffer(execStatement, "utf-8");
+        let execStatementBuffer = new Buffer.from(execStatement, "utf-8");
         screenWriteStream.write(execStatementBuffer);
 
         lxc.exec(info.command, function (err, lxcStream) {
