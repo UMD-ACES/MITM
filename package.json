@@ -16,7 +16,7 @@
     "d3-random": "^1.1.0",
     "fixedqueue": "0.0.1",
     "moment": "^2.22.2",
-    "mysql": "^2.15.0",
+    "mysql": "^2.16.0",
     "print-ascii": "0.0.2",
     "seedrandom": "^2.4.3",
     "ssh2": "^0.6.1",
