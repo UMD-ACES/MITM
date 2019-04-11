@@ -5,7 +5,7 @@ module.exports = {
     debug : true,
     logToInstructor: {
         enabled: true,
-        host: '10.0.15.141',
+        host: '172.30.124.11',
         user: 'students',
         password: 'ebJAHqWx.d?&Zh*qX|r*{X+k6vMb',
         database: 'ssh_mitm',
