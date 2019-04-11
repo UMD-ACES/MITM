@@ -27,20 +27,20 @@
 ## Start the MITM server
 
 ```bash
-node /root/MITM/mitm/index.js <class_groupID> <port> <container_ip> <container_id> [autoAccessEnable] [config file]
+node /root/MITM/mitm/index.js config_file class_groupID mitm_port container_ip container_id [autoAccessEnable]
 ```
 Example A:  
 ```bash
-node /root/MITM/mitm/index.js HACS200_1A 10000 172.20.0.2 101
+node /root/MITM/mitm/index.js mitm_101.js HACS200_1A 10000 172.20.0.2 101
 ```
 Example B:  
 ```bash
-node /root/MITM/mitm/index.js HACS200_1A 10000 172.20.0.2 101 true
+node /root/MITM/mitm/index.js mitm_101.js HACS200_1A 10000 172.20.0.2 101 false
 ```
-Example C (view setting up multiple config files [here](https://github.com/UMD-ACES/MITM/wiki/Multiple-config-files)):
-```bash
-node /root/MITM/mitm/index.js HACS200_1A 10000 172.20.0.2 101 true mitm2.js
-```
+
+## Config Files
+view setting up config files [here](https://github.com/UMD-ACES/MITM/wiki/Multiple-config-files)):
+
 
 ## Background
 
@@ -52,7 +52,7 @@ Please check this [wiki page](https://github.com/UMD-ACES/MITM/wiki/Running-in-t
 3. If you are having issues with a particular MITM instance, please make sure to communicate the session id
 
 ## Stay up to date
-`git pull origin master` inside the /root/MITM directory.
+Run `git pull origin master` inside the /root/MITM directory.
 
 ## Documentation
 [Wiki Page](https://github.com/UMD-ACES/MITM/wiki)
