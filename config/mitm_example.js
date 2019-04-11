@@ -12,9 +12,9 @@ module.exports = {
         connectionLimit : 5
     },
     logging : {
-        streamOutput : '/root/attacker_sessions',
-        loginAttempts : '/root/login_attempts',
-        logins : '/root/logins'
+        streamOutput : '/root/data/attacker_sessions',
+        loginAttempts : '/root/data/login_attempts',
+        logins : '/root/data/logins'
     },
     server : {
         maxAttemptsPerConnection: 6,
@@ -23,7 +23,7 @@ module.exports = {
         banner : ''
     },
     container : {
-        mountPath : '/media/'
+        mountPath : '/var/lib/lxc/'
     },
     autoAccess : {
         enabled: true,
