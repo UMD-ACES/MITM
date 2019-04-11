@@ -212,10 +212,16 @@ if (!(process.argv[2] && process.argv[3] && process.argv[4]) && process.argv[5])
 function startServer(hostKeys, port) {
 
     // Initialize the SSH server. Upon receiving a connection, handleAttackerConnection function will be called
+    let banner = '';
+    if(config.server.banner !== '')
+    {
+        banner = fs.readFileSync(config.server.banner, "utf8");
+    }
+
     let server = new ssh2.Server({
         hostKeys: hostKeys,
         ident: config.server.identifier, // Identifier sent to the client
-        banner: fs.readFileSync(config.server.banner, "utf8")
+        banner: banner
     }, handleAttackerConnection);
 
     // Bind SSH server to IP address and port
