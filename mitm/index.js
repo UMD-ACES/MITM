@@ -111,7 +111,7 @@ infoLog('MITM Version: ' + version);
 
 // argv[2] = Class_GroupID (e.g. HACS200_2A), argv[3] = Host MITM port, argv[4] = Container IP, argv[5] = Container ID, argv[6] = Force Enable/Disable Auto Access (Boolean), argv[7] = Specify MITM config file
 if (!(process.argv[2] && process.argv[3] && process.argv[4]) && process.argv[5]) {
-    console.error('Usage: node %s <Class_GroupID (e.g. HACS200_2A)> <Host MITM Port> <Container IP> <Container ID> [autoAccess]', path.basename(process.argv[1]));
+    console.error('Usage: node %s <Class_GroupID (e.g. HACS200_2A)> <Host MITM Port> <Container IP> <Container ID> [autoAccess] [config file]', path.basename(process.argv[1]));
     process.exit(1);
 } else {
     groupId = process.argv[2];
