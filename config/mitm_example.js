@@ -11,6 +11,9 @@ module.exports = {
         database: 'ssh_mitm',
         connectionLimit : 5
     },
+    container : {
+        mountPath : '/var/lib/lxc/'
+    },
     logging : {
         streamOutput : '/root/data/attacker_sessions',
         loginAttempts : '/root/data/login_attempts',
@@ -22,11 +25,8 @@ module.exports = {
         identifier : 'SSH-2.0-OpenSSH_6.6.1p1 Ubuntu-2ubuntu2',
         banner : ''
     },
-    container : {
-        mountPath : '/var/lib/lxc/'
-    },
     autoAccess : {
-        enabled: true,
+        enabled: false,
         cacheSize : 5000,
         barrier: {
             normalDist: {
