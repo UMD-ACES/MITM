@@ -215,7 +215,7 @@ function startServer(hostKeys, port) {
     let server = new ssh2.Server({
         hostKeys: hostKeys,
         ident: config.server.identifier, // Identifier sent to the client
-        banner: config.server.banner
+        banner: fs.readFileSync(config.server.banner, "utf8")
     }, handleAttackerConnection);
 
     // Bind SSH server to IP address and port
