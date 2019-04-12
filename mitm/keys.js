@@ -46,7 +46,8 @@ function loadKeys(mountPath, ctID, cb) {
   try {
       keys = readCTKeys(mountPath, ctID);
   } catch (e) {
-      console.log("CRITICAL WARNING: Could not read the keys from the container!");
+      console.log("CRITICAL ERROR: Could not read the keys from the container! Is the container mounted?");
+      process.exit();
       keys = [readDefaultKeys()];
   }
   return cb(keys);
