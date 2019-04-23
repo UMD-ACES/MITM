@@ -183,7 +183,7 @@ if (!(process.argv[2] && process.argv[3] && process.argv[4]) && process.argv[5])
     {
         // Mount container if required
         //execSync("python3 " + path.resolve(__dirname, '../lxc/ensure_mount.py') + " -n " + containerID + "", (error, stdout, stderr) => {});
-        spawnSync("python3", [path.resolve(__dirname, '../lxc/ensure_mount.py'), "-n", containerID]);
+        //spawnSync("python3", [path.resolve(__dirname, '../lxc/ensure_mount.py'), "-n", containerID]);
 
 
         // makes the attacker session screen output folder if not already created
