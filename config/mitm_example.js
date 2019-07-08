@@ -18,9 +18,9 @@ module.exports = {
         },
     },
     logging : {
-        streamOutput : '/root/data/attacker_sessions',
-        loginAttempts : '/root/data/login_attempts',
-        logins : '/root/data/logins'
+        streamOutput : '/root/MITM_data/attacker_sessions',
+        loginAttempts : '/root/MITM_data/login_attempts',
+        logins : '/root/MITM_data/logins'
     },
     server : {
         maxAttemptsPerConnection: 6,
