@@ -18,7 +18,7 @@ module.exports = {
         },
     },
     logging : {
-        streamOutput : '/root/MITM_data/attacker_sessions',
+        streamOutput : '/root/MITM_data/sessions',
         loginAttempts : '/root/MITM_data/login_attempts',
         logins : '/root/MITM_data/logins'
     },
