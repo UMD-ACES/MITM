@@ -1,5 +1,28 @@
 # Man-in-the-middle SSH Server
 
+## Objective
+
+Provide students the ability to collect SSH related data (login attempts, keystrokes) without the need for them to build their own SSH server.
+
+See this [wiki](https://github.com/UMD-ACES/MITM/wiki/Data-Collection) about the information collected by the MITM SSH server.
+
+## Expectations
+
+This program as is should only facilitate students with the collection of SSH related data.
+
+This program is not meant to facilitate the following:
+* Honeypot Architecture Setup
+* Recycling
+* Monitoring
+* Data Analysis
+
+However, students may expand this program as they wish including to facilitate the above.
+
+## Resources
+
+Please see the rest of this README page and check out the [wiki](https://github.com/UMD-ACES/MITM/wiki) pages.
+
+
 ## Configuration
 
 | Setting | Type | Explanation |
@@ -22,29 +45,6 @@
 | autoAccess.barrier.fixed.enabled | Boolean | Enable fixed login attempts threshold |
 | autoAccess.barrier.fixed.attempts | Number | Number of login attempts |
 
-##
-
-## Objective
-
-Provide students the ability to collect SSH related data (login attempts, keystrokes) without the need for them to build their own SSH server.
-
-See this [wiki](https://github.com/UMD-ACES/MITM/wiki/Data-Collection) about the information collected by the MITM SSH server.
-
-## Expectations
-
-This program as is should only facilitate students with the collection of SSH related data.
-
-This program is not meant to facilitate the following:
-* Honeypot Architecture Setup
-* Recycling
-* Monitoring
-* Data Analysis
-
-However, students may expand this program as they wish including to facilitate the above.
-
-## Resources
-
-Please see the rest of this README page and check out the [wiki](https://github.com/UMD-ACES/MITM/wiki) pages.
 
 ## Start the MITM server
 
