@@ -42,9 +42,13 @@ Example C (view setting up multiple config files [here](https://github.com/UMD-A
 node /root/MITM/mitm/index.js HACS200_1A 10000 172.20.0.2 101 true mitm_101.js
 ```
 
-## Background
+## Running MITM in the background
 
 Please check this [wiki page](https://github.com/UMD-ACES/MITM/wiki/Running-in-the-Background) if you would like to run the MITM in the background
+
+## Automatic Access
+
+Before using automatic access, please read the following [wiki page](https://github.com/UMD-ACES/MITM/wiki/Automatic-Access)
 
 ## Rules
 1. Do not add/edit/delete any code that are in the instructor blocks.
