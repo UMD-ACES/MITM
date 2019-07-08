@@ -48,6 +48,8 @@ Please check this [wiki page](https://github.com/UMD-ACES/MITM/wiki/Running-in-t
 
 ## Automatic Access
 
+Allows an attacker to successfully authenticate after a certain number of login attempts.
+
 Before using automatic access, please read the following [wiki page](https://github.com/UMD-ACES/MITM/wiki/Automatic-Access)
 
 ## Rules
@@ -60,10 +62,6 @@ Run `git pull origin master` inside the /root/MITM directory.
 
 ## Documentation
 [Wiki Page](https://github.com/UMD-ACES/MITM/wiki)
-
-## Automatic Access
-
-Allows an attacker to successfully authenticate after a certain number of login attempts.
 
 ## Authors
 Louis-Henri Merino  
