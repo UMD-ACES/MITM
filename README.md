@@ -46,23 +46,7 @@ Please see the rest of this README page and check out the [wiki](https://github.
 | autoAccess.barrier.fixed.attempts | Number | Number of login attempts |
 
 
-## Start the MITM server
-
-```bash
-node /root/MITM/mitm/index.js class_groupID port container_ip container_id [autoAccessEnable] [config_file]
-```
-Example A:  
-```bash
-node /root/MITM/mitm/index.js HACS200_1A 10000 172.20.0.2 101
-```
-Example B:  
-```bash
-node /root/MITM/mitm/index.js HACS200_1A 10000 172.20.0.2 101 true
-```
-Example C (view setting up multiple config files [here](https://github.com/UMD-ACES/MITM/wiki/Multiple-config-files)):
-```bash
-node /root/MITM/mitm/index.js HACS200_1A 10000 172.20.0.2 101 true mitm_101.js
-```
+## [Start the MITM server](https://github.com/UMD-ACES/MITM/wiki/Run#start-a-mitm-ssh-server-instance-foreground)
 
 ## Running MITM in the background
 
@@ -92,5 +76,3 @@ Zhi Xiang Lin
 
 ## License
 MIT License
-
-
