@@ -46,7 +46,9 @@ Please see the rest of this README page and check out the [wiki](https://github.
 | autoAccess.barrier.fixed.attempts | Number | Number of login attempts |
 
 
-## [Start the MITM server](https://github.com/UMD-ACES/MITM/wiki/Run#start-a-mitm-ssh-server-instance-foreground)
+## Start the MITM server
+
+View this wiki page to learn about starting the MITM SSH Server (https://github.com/UMD-ACES/MITM/wiki/Spawn-a-MITM-SSH-Server-instance#launch-a-mitm-ssh-server)
 
 ## Running MITM in the background
 
