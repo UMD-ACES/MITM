@@ -4,7 +4,7 @@
 
 Provide students the ability to collect SSH related data (login attempts, keystrokes) without the need for them to build their own SSH server.
 
-See this [wiki](https://github.com/UMD-ACES/MITM/wiki/Data-Collection) about the information collected by the MITM SSH server.
+See this [wiki page](https://github.com/UMD-ACES/MITM/wiki/Data-Collection) about the information collected by the MITM SSH server.
 
 ## Expectations
 
