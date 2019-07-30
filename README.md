@@ -16,7 +16,7 @@ This program is not meant to facilitate the following:
 * Monitoring
 * Data Analysis
 
-However, students may expand this program as they wish including to facilitate the above.
+However, students may modify this program as they wish including faciliting the above while following the [rules](https://github.com/UMD-ACES/MITM/blob/master/README.md#rules) described at a later section.
 
 ## Resources
 
