@@ -5,10 +5,10 @@ module.exports = {
     debug : true,
     logToInstructor: {
         enabled: true,
-        host: '172.30.125.132',
+        host: '172.30.125.124',
         user: 'students',
         password: 'ebJAHqWx.d?&Zh*qX|r*{X+k6vMb',
-        database: 'ssh_mitm',
+        database: 'ssh_mitm_f19',
         connectionLimit : 5
     },
     container : {
