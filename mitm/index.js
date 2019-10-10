@@ -23,7 +23,7 @@ let path            = require('path'),
     crypt3          = require('crypt3/sync');
 
 let config;
-let version = 1.26;
+let version = 1.3;
 
 const {spawnSync} = require('child_process');
 const {execSync} = require('child_process');
@@ -38,6 +38,9 @@ const {execSync} = require('child_process');
 
 // Critical Variables
 let className, groupId, runID, containerIP, containerID, containerMountPath;
+
+// Keep track of lxc streams
+let lxcStreams = []
 
 // Cleanup Variable
 let cleanup = false;
@@ -455,7 +458,7 @@ function handleAttackerAuth(attacker, cb) {
                     setAuthKeys(homeDir, origAuthKeys);
                     // Set the time back to make it look like we didn't work with this file
                     setFileTimes(authKeysPath, stats.atime, stats.mtime);
-                    cb(err, lxc, ctx, attacker);
+		    cb(err, lxc, ctx, attacker);
                 });
             }
             else {
@@ -788,9 +791,19 @@ function handleAttackerSession(attacker, lxc, sessionId, screenWriteStream) {
             });
 
             lxcStream.on('end', function () {
-                debugLog('[SHELL] Honeypot ended shell');
+		let position = lxcStreams.indexOf(lxcStream);
+		if(position > -1)
+		{
+		    lxcStreams.splice(position, 1);
+		    debugLog("[LXC Streams] Removed Stream | Total streams: " + lxcStreams.length);
+		}
+		debugLog('[SHELL] Honeypot ended shell');
                 attackerStream.end();
             });
+	    
+	    // Keep track of LXC Streams
+	    lxcStreams.push(lxcStream);
+	    debugLog("[LXC Streams] New Stream | Total Streams: " + lxcStreams.length);
         });
     });
 }
@@ -1238,11 +1251,18 @@ function housekeeping(type, details = null)
             console.log(details);
         }
 
-        cleanupPool(type, details, function() {
-            process.exit();
-            logins.end();
-            loginAttempts.end();
-        });
+	// Cleanup open LXC Streams
+	debugLog("Cleaning up LXC Streams: " + lxcStreams.length);
+	lxcStreams.forEach(function(lxcStream) {
+	    lxcStream.close();
+	});
+
+	setTimeout(function() {
+	    cleanupPool(type, details, function() {
+                process.exit();
+	        logins.end();
+	        loginAttempts.end();
+	    })}, 1000);
     }
 }
 
