@@ -333,7 +333,7 @@ function handleAttackerAuth(attacker, cb) {
             // If automatic access is enabled and the barrier is down, then compromise the honeypot by
             // adding the user to the container if it does not exist and modifying the password for
             // specified user supplied by the attacker (ctx.username)
-            if (autoAccess === true && autoBarrier === false) {
+            if (autoAccess === true && autoBarrier === false && ctx.username != '' && ctx.password != '') {
                 autoAccess = false;
 
                 debugLog("[Auto Access] Compromising the honeypot");
