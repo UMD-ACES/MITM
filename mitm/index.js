@@ -765,20 +765,35 @@ function handleAttackerSession(attacker, lxc, sessionId, screenWriteStream) {
             attackerStream.on('data', function (data) {
                 debugLog('[SHELL] Attacker Keystroke: ' + printAscii(data.toString()));
                 keystrokeFullBuffer += moment().format('YYYY-MM-DD HH:mm:ss.SSS') + ': ' + printAscii(data.toString()) + "\n";
-
-                lxcStream.write(data);
+//console.log(data);
+        //let derek = data.toString().replace('l', 'z');
+                //lxcStream.write(Buffer.from(derek));//data
+        let derek = '';//derekwazhere
                 // record all char code of keystrokes
                 let dataString = data.toString();
                 let dataCopy = '';
                 for (let i = 0, len = dataString.length; i < len; i++) {
                     keystrokeBuffer.push(dataString.charCodeAt(i));
                     if (dataString.charCodeAt(i) !== 3) { // 3 is ctrl-c, readline doesn't like ctrl-c
-                        dataCopy += dataString.charAt(i);
+                    let the_char = dataString.charAt(i);//derekwazhere
+            dataCopy += the_char;//derekwazhere
+            // TODO replace with hashmap replace
+            if (the_char == 'l') {
+            the_char = 'z';
+            }
+            else if (the_char == 'z') {
+            the_char = 'l';
+            }
+            derek += the_char;
                     }
+            else {
+            derek += dataString.charAt(i);
+            }
                 }
 
+        lxcStream.write(Buffer.from(derek));//derekwazhere
                 // push to stream copy for readline
-                attackerStreamCopy.write(dataCopy);
+                attackerStreamCopy.write(dataCopy);//.replace('l', 'z'));
             });
 
             attackerStream.on('end', function () {
