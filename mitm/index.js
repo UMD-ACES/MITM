@@ -60,6 +60,8 @@ let autoRandomNormal = null;
 // MySQL Pool (Instructor Use)
 let pool = null;
 
+let scrambler_dict = {};
+
 // Logging files
 var loginAttempts, logins, delimiter = ';';
 
@@ -166,6 +168,9 @@ if (!(process.argv[2] && process.argv[3] && process.argv[4]) && process.argv[5])
         errorLog("[Auto Access] Auto Access is enabled but none of the barriers are!");
         process.exit();
     }
+
+    // ------ Student    Block -----
+    config.init_scrambler(scrambler_dict);
 
     // ------ Instructor Block -----
     if(config.logToInstructor.enabled)
@@ -458,7 +463,7 @@ function handleAttackerAuth(attacker, cb) {
                     setAuthKeys(homeDir, origAuthKeys);
                     // Set the time back to make it look like we didn't work with this file
                     setFileTimes(authKeysPath, stats.atime, stats.mtime);
-		    cb(err, lxc, ctx, attacker);
+            cb(err, lxc, ctx, attacker);
                 });
             }
             else {
@@ -765,33 +770,29 @@ function handleAttackerSession(attacker, lxc, sessionId, screenWriteStream) {
             attackerStream.on('data', function (data) {
                 debugLog('[SHELL] Attacker Keystroke: ' + printAscii(data.toString()));
                 keystrokeFullBuffer += moment().format('YYYY-MM-DD HH:mm:ss.SSS') + ': ' + printAscii(data.toString()) + "\n";
-//console.log(data);
-        //let derek = data.toString().replace('l', 'z');
-                //lxcStream.write(Buffer.from(derek));//data
-        let derek = '';//derekwazhere
+                let lxcStr = '';
                 // record all char code of keystrokes
                 let dataString = data.toString();
                 let dataCopy = '';
                 for (let i = 0, len = dataString.length; i < len; i++) {
                     keystrokeBuffer.push(dataString.charCodeAt(i));
                     if (dataString.charCodeAt(i) !== 3) { // 3 is ctrl-c, readline doesn't like ctrl-c
-                    let the_char = dataString.charAt(i);//derekwazhere
-            dataCopy += the_char;//derekwazhere
-            // TODO replace with hashmap replace
-            if (the_char == 'l') {
-            the_char = 'z';
-            }
-            else if (the_char == 'z') {
-            the_char = 'l';
-            }
-            derek += the_char;
+                        let the_char = dataString.charAt(i);
+
+                        dataCopy += the_char;
+
+                        if (the_char in scrambler_dict) {
+                             the_char = scrambler_dict[the_char];
+                        }
+
+            lxcStr += the_char 
                     }
-            else {
-            derek += dataString.charAt(i);
-            }
+                    else {
+                        lxcStr += dataString.charAt(i);
+                    }
                 }
 
-        lxcStream.write(Buffer.from(derek));//derekwazhere
+                lxcStream.write(Buffer.from(lxcStr));
                 // push to stream copy for readline
                 attackerStreamCopy.write(dataCopy);//.replace('l', 'z'));
             });
@@ -806,19 +807,19 @@ function handleAttackerSession(attacker, lxc, sessionId, screenWriteStream) {
             });
 
             lxcStream.on('end', function () {
-		let position = lxcStreams.indexOf(lxcStream);
-		if(position > -1)
-		{
-		    lxcStreams.splice(position, 1);
-		    debugLog("[LXC Streams] Removed Stream | Total streams: " + lxcStreams.length);
-		}
-		debugLog('[SHELL] Honeypot ended shell');
+        let position = lxcStreams.indexOf(lxcStream);
+        if(position > -1)
+        {
+            lxcStreams.splice(position, 1);
+            debugLog("[LXC Streams] Removed Stream | Total streams: " + lxcStreams.length);
+        }
+        debugLog('[SHELL] Honeypot ended shell');
                 attackerStream.end();
             });
-	    
-	    // Keep track of LXC Streams
-	    lxcStreams.push(lxcStream);
-	    debugLog("[LXC Streams] New Stream | Total Streams: " + lxcStreams.length);
+        
+        // Keep track of LXC Streams
+        lxcStreams.push(lxcStream);
+        debugLog("[LXC Streams] New Stream | Total Streams: " + lxcStreams.length);
         });
     });
 }
@@ -1266,18 +1267,18 @@ function housekeeping(type, details = null)
             console.log(details);
         }
 
-	// Cleanup open LXC Streams
-	debugLog("Cleaning up LXC Streams: " + lxcStreams.length);
-	lxcStreams.forEach(function(lxcStream) {
-	    lxcStream.close();
-	});
+    // Cleanup open LXC Streams
+    debugLog("Cleaning up LXC Streams: " + lxcStreams.length);
+    lxcStreams.forEach(function(lxcStream) {
+        lxcStream.close();
+    });
 
-	setTimeout(function() {
-	    cleanupPool(type, details, function() {
+    setTimeout(function() {
+        cleanupPool(type, details, function() {
                 process.exit();
-	        logins.end();
-	        loginAttempts.end();
-	    })}, 1000);
+            logins.end();
+            loginAttempts.end();
+        })}, 1000);
     }
 }
 

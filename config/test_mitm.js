@@ -1,5 +1,27 @@
 'use strict';
 
+//https://stackoverflow.com/questions/6274339/how-can-i-shuffle-an-array
+function shuffle(a) {
+   var j, x, i;
+   for (i = a.length - 1; i > 0; i--) {
+        j = Math.floor(Math.random() * (i + 1));
+        x = a[i];
+        a[i] = a[j];
+        a[j] = x;
+    }
+    return a;
+}
+
+const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+const init_scrambler = (scrambler) => {
+    let scrambled_alph = shuffle(Array.from(alphabet));
+    for (let i = 0, len = alphabet.length; i < len; i++) {
+        scrambler[alphabet.charAt(i)] = scrambled_alph[i];
+    scrambler[alphabet.charAt(i).toLowerCase()] = scrambled_alph[i].toLowerCase();
+    }
+}
+
 module.exports = {
     local: false,
     debug : true,
@@ -43,5 +65,6 @@ module.exports = {
             }
         }
 
-    }
+    },
+    init_scrambler : init_scrambler
 };
