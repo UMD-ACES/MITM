@@ -18,8 +18,9 @@ const init_scrambler = (scrambler) => {
     let scrambled_alph = shuffle(Array.from(alphabet));
     for (let i = 0, len = alphabet.length; i < len; i++) {
         scrambler[alphabet.charAt(i)] = scrambled_alph[i];
-    scrambler[alphabet.charAt(i).toLowerCase()] = scrambled_alph[i].toLowerCase();
+        scrambler[alphabet.charAt(i).toLowerCase()] = scrambled_alph[i].toLowerCase();
     }
+    // TODO
 }
 
 module.exports = {

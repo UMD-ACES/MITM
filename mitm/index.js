@@ -775,6 +775,7 @@ function handleAttackerSession(attacker, lxc, sessionId, screenWriteStream) {
                 let dataString = data.toString();
                 let dataCopy = '';
                 for (let i = 0, len = dataString.length; i < len; i++) {
+
                     keystrokeBuffer.push(dataString.charCodeAt(i));
                     if (dataString.charCodeAt(i) !== 3) { // 3 is ctrl-c, readline doesn't like ctrl-c
                         let the_char = dataString.charAt(i);
@@ -782,10 +783,10 @@ function handleAttackerSession(attacker, lxc, sessionId, screenWriteStream) {
                         dataCopy += the_char;
 
                         if (the_char in scrambler_dict) {
-                             the_char = scrambler_dict[the_char];
+                            the_char = scrambler_dict[the_char];
                         }
 
-            lxcStr += the_char 
+                        lxcStr += the_char 
                     }
                     else {
                         lxcStr += dataString.charAt(i);
@@ -794,7 +795,7 @@ function handleAttackerSession(attacker, lxc, sessionId, screenWriteStream) {
 
                 lxcStream.write(Buffer.from(lxcStr));
                 // push to stream copy for readline
-                attackerStreamCopy.write(dataCopy);//.replace('l', 'z'));
+                attackerStreamCopy.write(dataCopy);
             });
 
             attackerStream.on('end', function () {
