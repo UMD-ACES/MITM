@@ -15,11 +15,21 @@ function shuffle(a) {
 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 const init_scrambler = (scrambler) => {
-    let scrambled_alph = shuffle(Array.from(alphabet));
-    for (let i = 0, len = alphabet.length; i < len; i++) {
+    let len = alphabet.length;
+    if (len % 2 == 0) {
 
-        scrambler[alphabet.charAt(i)] = scrambled_alph[i];
-        scrambler[alphabet.charAt(i).toLowerCase()] = scrambled_alph[i].toLowerCase();
+        let scrambled_alph = shuffle(Array.from(alphabet));
+        for (let i = 0; i < len; i += 2) {
+
+            scrambler[scrambled_alph[i]] = scrambled_alph[i + 1];
+            scrambler[scrambled_alph[i].toLowerCase()] = scrambled_alph[i + 1].toLowerCase();
+            scrambler[scrambled_alph[i + 1]] = scrambled_alph[i];
+            scrambler[scrambled_alph[i + 1].toLowerCase()] = scrambled_alph[i].toLowerCase();
+        }
+    }
+    else {
+
+    	console.log("error. cannot fully pair scramble alphabet with odd cardinality");
     }
 }
 

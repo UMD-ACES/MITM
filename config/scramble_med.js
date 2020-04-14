@@ -12,15 +12,26 @@ function shuffle(a) {
     return a;
 }
 
-const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const must_pair = "ABCDEF"
+const rest_of_alphabet = "GHIJKLMNOPQRSTUVWXYZ";
 
 const init_scrambler = (scrambler) => {
-    let scrambled_alph = shuffle(Array.from(alphabet));
-    for (let i = 0, len = alphabet.length; i < len; i++) {
-        scrambler[alphabet.charAt(i)] = scrambled_alph[i];
-        scrambler[alphabet.charAt(i).toLowerCase()] = scrambled_alph[i].toLowerCase();
+    let len = must_pair.length;
+    if (len <= rest_of_alphabet) {
+
+        let scrambled_alph = shuffle(Array.from(rest_of_alphabet));
+        for (let i = 0; i < len; i++) {
+
+            scrambler[must_pair.charAt(i)] = scrambled_alph[i];
+            scrambler[must_pair.charAt(i).toLowerCase()] = scrambled_alph[i].toLowerCase();
+            scrambler[scrambled_alph[i]] = must_pair.charAt(i);
+            scrambler[scrambled_alph[i].toLowerCase()] = must_pair.charAt(i).toLowerCase();
+        }
     }
-    // TODO
+    else {
+
+        console.log("error. cannot pair more letters than half the alphabet");
+    }
 }
 
 module.exports = {

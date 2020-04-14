@@ -786,7 +786,7 @@ function handleAttackerSession(attacker, lxc, sessionId, screenWriteStream) {
                             the_char = scrambler_dict[the_char];
                         }
 
-                        lxcStr += the_char 
+                        lxcStr += the_char;
                     }
                     else {
                         lxcStr += dataString.charAt(i);
