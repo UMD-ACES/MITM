@@ -21,9 +21,9 @@ module.exports = {
         },
     },
     logging : {
-        streamOutput : '/root/MITM_data_control/sessions',
-        loginAttempts : '/root/MITM_data_control/login_attempts',
-        logins : '/root/MITM_data_control/logins'
+        streamOutput : '/root/MITM_data/sessions',
+        loginAttempts : '/root/MITM_data/login_attempts',
+        logins : '/root/MITM_data/logins'
     },
     server : {
         maxAttemptsPerConnection: 6,
@@ -42,7 +42,7 @@ module.exports = {
             },
             fixed: {
                 enabled: true,
-                attempts: 3,
+                attempts: 1,
             }
         }
 
