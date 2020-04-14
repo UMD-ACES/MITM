@@ -17,7 +17,7 @@ const rest_of_alphabet = "ABCDEFGHIJKMNOPQRTUVWXYZ";
 
 const init_scrambler = (scrambler) => {
     let len = must_pair.length;
-    if (len <= rest_of_alphabet) {
+    if (len <= rest_of_alphabet.length) {
 
         let scrambled_alph = shuffle(Array.from(rest_of_alphabet));
         for (let i = 0; i < len; i++) {
