@@ -42,7 +42,7 @@ module.exports = {
             },
             fixed: {
                 enabled: true,
-                attempts: 1,
+                attempts: 3,
             }
         }
 
