@@ -5,7 +5,7 @@ const init_scrambler = (scrambler) => {
 
 module.exports = {
     local: false,
-    debug : false,
+    debug : true,
     logToInstructor: {
         enabled: false,
         host: '172.30.125.124',
