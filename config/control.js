@@ -16,7 +16,6 @@ module.exports = {
     },
     container : {
         mountPath: {
-            // TODO change this
             prefix: '/var/lib/lxc/',
             suffix: 'rootfs'
         },
