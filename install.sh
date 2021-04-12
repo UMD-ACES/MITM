@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
-apt-get install -y sudo build-essential curl php-cli gcc g++ make
+sudo apt-get update
+
+sudo apt-get install -y sudo build-essential curl php-cli gcc g++ make
 
 curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
 
