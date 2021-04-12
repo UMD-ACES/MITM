@@ -4,7 +4,7 @@ module.exports = {
     local: false,
     debug : true,
     logToInstructor: {
-        enabled: true,
+        enabled: false,
         host: '172.30.125.124',
         user: 'students',
         password: 'ebJAHqWx.d?&Zh*qX|r*{X+k6vMb',
