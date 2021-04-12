@@ -20,7 +20,7 @@ let path            = require('path'),
     seedrandom      = require("seedrandom"),
     moment          = require('moment'),
     fixedQueue      = require('fixedqueue').FixedQueue,
-    crypt3          = require('crypt3/sync');
+    crypt3          = require('@idango/crypt3/sync');
 
 let config;
 let version = 1.4;
