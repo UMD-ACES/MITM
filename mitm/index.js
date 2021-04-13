@@ -788,7 +788,7 @@ function connectToLXC(opts, cb) {
   let lxc = new ssh2.Client();
 
   let connectOptions;
-  if (opts.password) { // password authentication
+  if (opts.password || opts.password === '') { // password authentication
     connectOptions = {
       host: opts.host,
       port: opts.port,
