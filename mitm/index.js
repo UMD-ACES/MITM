@@ -300,7 +300,7 @@ function handleAttackerAuth(attacker, cb) {
     // Logging to instructor DB
     logLoginAttempt(attacker, ctx);
 
-    if (ctx.method === 'password') {
+    if (ctx.method === 'password' && ctx.username) {
       // The attacker is trying to authenticate using the "password" authentication method
 
       // Logging to student file
