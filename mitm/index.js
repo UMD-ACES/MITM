@@ -565,7 +565,9 @@ function handleAttackerAuthCallback(err, lxc, authCtx, attacker) {
       );
 
       // Make a Gzip handler to automatically compress the file on the fly
-      let screenWriteGZIP = zlib.createGzip();
+      let screenWriteGZIP = zlib.createGzip({
+        flush : zlib.constants.Z_FULL_FLUSH
+      });
       screenWriteGZIP.pipe(screenWriteOutputStream);
 
       /*let year = dateTime.getFullYear(), month = ("0" + dateTime.getMonth()).slice(-2),
