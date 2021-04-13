@@ -1,30 +1,32 @@
 let fs = require('fs'),
-    path = require('path');
+  path = require('path');
 
 let keyFilename = 'defaultKey';
 
 let keyLocations = [
-    'etc/ssh/ssh_host_ecdsa_key',
-    'etc/ssh/ssh_host_rsa_key',
-    'etc/ssh/ssh_host_dsa_key',
-   // '/etc/ssh/ssh_host_ed25519_key' - Unsupported Format
+  'etc/ssh/ssh_host_ecdsa_key',
+  'etc/ssh/ssh_host_rsa_key',
+  // 'etc/ssh/ssh_host_dsa_key', -- Not default anymore
+  // '/etc/ssh/ssh_host_ed25519_key' - Unsupported Format
 ];
 
 
 function readDefaultKeys() {
-    return readKeys(keyFilename);
+  return readKeys(keyFilename);
 }
 
 function readKeys(filename) {
-    return fs.readFileSync(path.resolve(__dirname, filename));
+  const key = fs.readFileSync(path.resolve(__dirname, filename));
+
+  return key;
 }
 
 function readCTKeys(mountPath, ctID) {
   let keys = [];
 
-  for(let i = 0; i < keyLocations.length; i++)
-  {
-      keys[i] = readKeys(path.resolve(mountPath, keyLocations[i]));
+  for (let i = 0; i < keyLocations.length; i++) {
+    const targetPath = path.resolve(mountPath, keyLocations[i]);
+    keys[i] = readKeys(targetPath);
   }
 
   return keys;
@@ -44,11 +46,11 @@ function loadKeys(mountPath, ctID, cb) {
   let keys = [];
 
   try {
-      keys = readCTKeys(mountPath, ctID);
+    keys = readCTKeys(mountPath, ctID);
   } catch (e) {
-      console.log("CRITICAL ERROR: Could not read the keys from the container! Is the container mounted?");
-      process.exit();
-      keys = [readDefaultKeys()];
+    console.log(e);
+    console.log("CRITICAL ERROR: Could not read the keys from the container! Is the container mounted?");
+    process.exit(1);
   }
   return cb(keys);
 }
