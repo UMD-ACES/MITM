@@ -49,7 +49,11 @@ function loadKeys(mountPath, ctID, cb) {
     keys = readCTKeys(mountPath, ctID);
   } catch (e) {
     console.log(e);
-    console.log("CRITICAL ERROR: Could not read the keys from the container! Is the container mounted?");
+    if (e.code === 'EACCES') {
+      console.log("CRITICAL ERROR: Could not read the keys from the container! Permission denied, are you the root user?");
+    } else {
+      console.log("CRITICAL ERROR: Could not read the keys from the container! Is the container mounted/running and is openssh-server installed?");
+    }
     process.exit(1);
   }
   return cb(keys);
