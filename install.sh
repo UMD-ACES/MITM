@@ -10,4 +10,4 @@ sudo apt-get install -y nodejs
 
 cd "$(dirname "$0")"
 
-npm install
+sudo npm install
