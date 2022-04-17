@@ -1,32 +1,27 @@
-'use strict';
-
 /************************************************************************************
  * ---------------------- Required Packages START Block -----------------------------
  ************************************************************************************/
 
-let path            = require('path'),
-    fs              = require('fs'),
-    zlib            = require('zlib'),
-    initialize      = require('./keys'),
-    readline        = require('readline'),
-    child_process   = require('child_process'),
-    Stream          = require('stream'),
-    ssh2            = require('ssh2'),
-    uuid            = require('uuid'),
-    mysql           = require('mysql'),
-    os              = require('os'),
-    printAscii      = require('print-ascii'),
-    d3_random       = require("d3-random"),
-    seedrandom      = require("seedrandom"),
-    moment          = require('moment'),
-    fixedQueue      = require('fixedqueue').FixedQueue,
-    crypt3          = require('@idango/crypt3/sync');
+const path            = require('path'),
+      fs              = require('fs'),
+      zlib            = require('zlib'),
+      initialize      = require('./keys'),
+      readline        = require('readline'),
+      child_process   = require('child_process'),
+      Stream          = require('stream'),
+      ssh2            = require('ssh2'),
+      os              = require('os'),
+      printAscii      = require('print-ascii'),
+      d3_random       = require('d3-random'),
+      seedrandom      = require('seedrandom'),
+      moment          = require('moment'),
+      fixedQueue      = require('fixedqueue').FixedQueue,
+      crypt3          = require('@idango/crypt3/sync'),
+      commander       = require('commander');
 
-let config;
-let version = 1.4;
+const version = 2;
 
-const {spawnSync} = require('child_process');
-const {execSync} = require('child_process');
+const { spawnSync, execSync } = child_process;
 
 /************************************************************************************
  * ---------------------- Required Packages END Block -------------------------------
@@ -35,9 +30,6 @@ const {execSync} = require('child_process');
 /************************************************************************************
  * ---------------------- MITM Global Variables START Block -------------------------
  ************************************************************************************/
-
-// Critical Variables
-let className, groupId, runID, containerIP, containerID, containerMountPath;
 
 // Keep track of lxc streams
 let lxcStreams = []
@@ -51,146 +43,128 @@ let DEFAULT_KEYS = {
   PUBLIC: fs.readFileSync(path.resolve(__dirname, 'defaultKey.pub')),
 };
 
-// Automatic Access Variables
-let autoAccess = false;
-let autoBarrier  = true; // false indicates that the barrier has been taken down so the login attempt will be successful.
-let autoIPs; // Queue for the IPs
-let autoRandomNormal = null;
-
-// MySQL Pool (Instructor Use)
-let pool = null;
-
 // Logging files
-var loginAttempts, logins, delimiter = ';';
+let loginAttempts, logins, delimiter = ';';
 
 /************************************************************************************
  * ---------------------- MITM Global Variables END Block ---------------------------
  ************************************************************************************/
 
+commander.program
+  .option('-d, --debug', 'Debug mode', false)
+  .requiredOption('-n, --container-name <name>', 'Container name')
+  .requiredOption('-i, --container-ip <ip address>', 'Container internal IP address')
+  .requiredOption('-p, --mitm-port <number>', 'MITM server listening port', parseInt)
+  .option('-l, --mitm-ip <ip address>', 'MITM server listening ip address', '0.0.0.0')
+  .option('-a, --auto-access', 'Toggle to enable auto-access, must configure one of the auto-access strategies below', false)
+  .option('--auto-access-normal-distribution-mean <number>', 'Auto-Access Normal Distribution Strategy: Mean number of attempts before allowing attacker', parseInt)
+  .option('--auto-access-normal-distribution-std-dev <number>', 'Auto-Access Normal Distribution Strategy: Standard deviation from the mean to randomize', parseInt)
+  .option('--auto-access-fixed <number>', 'Auto-Access Fixed Strategy: Number of attempts before allowing attacker', parseInt)
+  .option('--auto-access-cache <number>', 'Size of the cache to track IP addresses', 5000)
+  .option('--max-attempts-per-connection <number>', 'Number of credential attempts to allow per single SSH connection', 6)
+  .option('--ssh-server-identifier <string>', 'SSH Server Identifier field to advertise to SSH clients', 'SSH-2.0-OpenSSH_6.6.1p1 Ubuntu-2ubuntu2')
+  .option('--ssh-server-banner-file <file path>', 'File path to the SSH server banner to show SSH clients when they connect')
+  .option('--container-mount-path-prefix <string>', 'The base directory for where all containers are mounted', '/var/lib/lxc')
+  .option('--container-mount-path-suffix <string>', 'The sub directory name where the container file system is located', 'rootfs/')
+  .option('--logging-attacker-streams <string>', 'The directory to log all attacker session streams', path.resolve(__dirname, '../logs/session_streams'))
+  .option('--logging-authentication-attempts <string>', 'The directory to log all attacker authentication attempts', path.resolve(__dirname, '../logs/authentication_attempts'))
+  .option('--logging-logins <string>', 'The directory to log all successful attacker logins', path.resolve(__dirname, '../logs/logins'))
+  .option('--logging-keystrokes <string>', 'The directory to log all attacker keystrokes', path.resolve(__dirname, '../logs/keystrokes'))
+;
+
+commander.program.parse();
+
+const options = commander.program.opts();
+
+const {
+  debug,
+  containerName,
+  containerIp,
+  mitmPort,
+  mitmIp,
+  autoAccess,
+  autoAccessNormalDistributionMean,
+  autoAccessNormalDistributionStdDev,
+  autoAccessFixed,
+  autoAccessCache,
+  maxAttemptsPerConnection,
+  sshServerIdentifier,
+  sshServerBannerFile,
+  containerMountPathPrefix,
+  containerMountPathSuffix,
+  loggingAttackerStreams,
+  loggingAuthenticationAttempts,
+  loggingLogins,
+  loggingKeystrokes,
+} = options;
+
+if (debug) {
+  console.log('Started with the following options:');
+  console.log(options);
+}
 /************************************************************************************
  * ---------------------- Logging START Block ---------------------------------------
  ************************************************************************************/
 
-function debugLog(message, DBLog_ = true) {
-  if (config.debug) {
-    message = moment().format("YYYY-MM-DD HH:mm:ss.SSS") + ' - [Debug] ' + message;
+function debugLog(message) {
+  if (debug) {
+    message = moment().format('YYYY-MM-DD HH:mm:ss.SSS') + ' - [Debug] ' + message;
     console.log(message);
-
-    if (DBLog_) {
-      DBLog('debug', message);
-    }
   }
 }
 
-function infoLog(message, DBLog_ = true) {
-  message = moment().format("YYYY-MM-DD HH:mm:ss.SSS") + ' - [Info] ' + message;
+function infoLog(message) {
+  message = moment().format('YYYY-MM-DD HH:mm:ss.SSS') + ' - [Info] ' + message;
   console.log(message);
-
-  if (DBLog_) {
-    DBLog('info', message);
-  }
 }
 
-function errorLog(message, DBLog_ = true) {
-  message = moment().format("YYYY-MM-DD HH:mm:ss.SSS") + ' - [Error] ' + message;
+function errorLog(message) {
+  message = moment().format('YYYY-MM-DD HH:mm:ss.SSS') + ' - [Error] ' + message;
   console.error(message);
-
-  if (DBLog_) {
-    DBLog('error', message);
-  }
 }
 
 /************************************************************************************
  * ---------------------- Logging END Block -----------------------------------------
  ************************************************************************************/
 
-// argv[2] = Class_GroupID (e.g. HACS200_2A), argv[3] = Host MITM port, argv[4] = Container IP, argv[5] = Container ID, argv[6] = Force Enable/Disable Auto Access (Boolean), argv[7] = Specify MITM config file
-if (!process.argv[2] || (!(process.argv[2] && process.argv[3] && process.argv[4]) && process.argv[5])) {
-  console.error('Usage: node %s <Class_GroupID (e.g. HACS200_2A)> <Host MITM Port> <Container IP> <Container ID> [autoAccess] [config file]', path.basename(process.argv[1]));
-  process.exit(1);
-}
-
-groupId = process.argv[2];
-containerIP = process.argv[4];
-containerID = process.argv[5];
-
-
-// Load MITM config file
-if (process.argv[7]) {
-  config = require('../config/' + process.argv[7]);
-} else {
-  config = require('../config/mitm.js');
-}
-
-infoLog('MITM Version: ' + version);
-
-// ------ Instructor Block START -------
-if (config.logToInstructor.enabled && (groupId.indexOf("HACS") === -1 || (groupId.split("_")).length !== 2)) {
-  errorLog("Incorrect Class_GroupID (e.g. HACS200_2A)");
-  process.exit(1);
-}
-className = (groupId.split("_"))[0];
-groupId = (groupId.split("_"))[1];
-// ------ Instructor Block END ---------
-
-autoIPs = new fixedQueue(config.autoAccess.cacheSize);
-containerMountPath = path.resolve(config.container.mountPath.prefix, process.argv[5], config.container.mountPath.suffix);
-
-// Load Auto Access value from the config file
-autoAccess = config.autoAccess.enabled;
-if (process.argv[6]) {
-  // Overwritten using the CLI
-  autoAccess = (process.argv[6] === 'true');
-}
-
-// Barrier active is autoAccess active
-autoBarrier = autoAccess;
-
-infoLog("Auto Access Enabled: " + autoAccess);
-debugLog("[Init] Auto Access Barrier: " + autoBarrier);
+// Automatic Access Variables
+let autoAccessEnabled = autoAccess;
+let autoAccessThresholdAchieved = false;
+let autoRandomNormal = null;
+const autoIPs = autoAccessEnabled ? new fixedQueue(autoAccessCache) : null;
+const containerMountPath = path.join(containerMountPathPrefix, containerName, containerMountPathSuffix);
 
 // Set up Normal Distribution Random Generator if enabled
-if (config.autoAccess.barrier.normalDist.enabled) {
-  autoRandomNormal = d3_random.randomNormal.source(seedrandom())(
-    config.autoAccess.barrier.normalDist.mean, config.autoAccess.barrier.normalDist.standardDeviation);
-} else if (!config.autoAccess.barrier.fixed.enabled) {
-  errorLog("[Auto Access] Auto Access is enabled but none of the barriers are!");
-  process.exit();
-}
-
-// ------ Instructor Block -----
-if (config.logToInstructor.enabled) {
-  pool = mysql.createPool({
-    connectionLimit : config.logToInstructor.connectionLimit,
-    host            : config.logToInstructor.host,
-    user            : config.logToInstructor.user,
-    password        : config.logToInstructor.password,
-    database        : config.logToInstructor.database
-  })
-}
-// ------ Instructor Block -----
-
-
-// Do not do the following locally
-if (config.local === false) {
-  // Mount container if required
-  //execSync("python3 " + path.resolve(__dirname, '../lxc/ensure_mount.py') + " -n " + containerID + "", (error, stdout, stderr) => {});
-  //spawnSync("python3", [path.resolve(__dirname, '../lxc/ensure_mount.py'), "-n", containerID]);
-
-
-  // makes the attacker session screen output folder if not already created
-  initialize.makeOutputFolder(config.logging.streamOutput);
-  initialize.makeOutputFolder(config.logging.loginAttempts);
-  initialize.makeOutputFolder(config.logging.logins);
-
-  loginAttempts   = fs.createWriteStream(path.resolve(config.logging.loginAttempts, containerID + ".txt"), {flags:'a'});
-  logins          = fs.createWriteStream(path.resolve(config.logging.logins, containerID + ".txt"), {flags:'a'});
+if (autoAccess) {
+  if (autoAccessNormalDistributionMean >= 0) {
+    if (!(autoAccessNormalDistributionStdDev >= 0)) {
+      console.log('[ERROR] Auto Access normal distribution strategy is missing the standard deviation configuration');
+      process.exit(1);
+    }
+    autoRandomNormal = d3_random.randomNormal.source(seedrandom())(autoAccessNormalDistributionMean, autoAccessNormalDistributionStdDev);
+  } else if (!(autoAccessFixed >= 0)) {
+    console.log('[ERROR] Auto Access is enabled but none of the threshold strategies are configured');
+    process.exit(1);
+  }
 }
 
 // loads private and public keys from container if possible
-initialize.loadKeys(containerMountPath, containerID, function (hostKeys) {
-  startServer(hostKeys, parseInt(process.argv[3]));
-});
+const hostKeys = initialize.loadKeys(containerMountPath, containerName);
+
+infoLog('MITM Version: ' + version);
+infoLog('Auto Access Enabled: ' + autoAccessEnabled);
+debugLog('[Init] Auto Access Theshold Achieved: ' + autoAccessThresholdAchieved);
+
+// makes the attacker session screen output folder if not already created
+initialize.makeOutputFolder(loggingAttackerStreams);
+initialize.makeOutputFolder(loggingAuthenticationAttempts);
+initialize.makeOutputFolder(loggingLogins);
+initialize.makeOutputFolder(loggingKeystrokes);
+
+loginAttempts   = fs.createWriteStream(path.resolve(loggingAuthenticationAttempts, containerName + '.log'), { flags: 'a' });
+logins          = fs.createWriteStream(path.resolve(loggingLogins, containerName + '.log'), { flags: 'a' });
+
+startServer(hostKeys, mitmPort);
 
 /**
  * Start the main SSH2 server
@@ -204,26 +178,19 @@ function startServer(hostKeys, port) {
 
   // Initialize the SSH server. Upon receiving a connection, handleAttackerConnection function will be called
   let banner = '';
-  if (config.server.banner !== '') {
-    banner = fs.readFileSync(config.server.banner, "utf8");
+  if (sshServerBannerFile) {
+    banner = fs.readFileSync(path.resolve(sshServerBannerFile), 'utf8');
   }
 
   let server = new ssh2.Server({
     hostKeys: hostKeys,
-    ident: config.server.identifier, // Identifier sent to the client
-    banner: banner
+    ident: sshServerIdentifier, // Identifier sent to the client
+    banner,
   }, handleAttackerConnection);
 
   // Bind SSH server to IP address and port
-  server.listen(port, config.server.listenIP, function () { // function called when the server has successfully set up
-    infoLog('SSH man-in-the-middle server for ' + containerIP + ' listening on ' +
-      config.server.listenIP + ':' + this.address().port);
-
-    // ---- Instructor Block START -------
-    if (config.logToInstructor.enabled) {
-      logStartMITM(port);
-    }
-    // ---- Instructor Block END ---------
+  server.listen(port, mitmIp, function () { // function called when the server has successfully set up
+    infoLog('SSH man-in-the-middle server for ' + containerIp + ' listening on ' + mitmIp + ':' + this.address().port);
   });
 }
 
@@ -251,13 +218,13 @@ function handleAttackerConnection(attacker, info) {
 
   // Sanity check
   if (attacker._sock._peername === undefined || attacker._sock._peername === null || info.ip === null) {
-    debugLog("[Connection] Socket Error");
+    debugLog('[Connection] Socket Error');
     return;
   }
 
   // Get the IP address of the attacker (the client end of the connection)
   let ipAddress = info.ip;
-  debugLog('[Connection] Attacker connected: ' + ipAddress + " | Client Identification: " + info.header.identRaw);
+  debugLog('[Connection] Attacker connected: ' + ipAddress + ' | Client Identification: ' + info.header.identRaw);
 
   // When attacker exits before he or she has authenticated
   attacker.on('end', attackerEndBeforeAuthenticated);
@@ -269,7 +236,7 @@ function handleAttackerConnection(attacker, info) {
   attacker.ipAddress = ipAddress;
 
   // Handle Attacker Authentication method. handleAttackerAuthCallback is called when the
-  // the function handleAttackerAuth calls it using "cb(param1, param2, etc...)"
+  // the function handleAttackerAuth calls it using 'cb(param1, param2, etc...)'
   handleAttackerAuth(attacker, handleAttackerAuthCallback);
 }
 
@@ -279,7 +246,7 @@ function handleAttackerConnection(attacker, info) {
  *
  */
 function attackerEndBeforeAuthenticated() {
-  debugLog("[Connection] Attacker closed the connection");
+  debugLog('[Connection] Attacker closed the connection');
 }
 
 /**
@@ -292,54 +259,51 @@ function attackerEndBeforeAuthenticated() {
  */
 function handleAttackerAuth(attacker, cb) {
 
-  // Binds the "authentication" event to the attacker object. Now, whenever the attacker tries to authenticate, this
+  // Binds the 'authentication' event to the attacker object. Now, whenever the attacker tries to authenticate, this
   // anonymous function will be called.
   attacker.on('authentication', function (ctx) {
-    debugLog('[Auth] Attacker ' + attacker.ipAddress + " trying to authenticate with \"" + ctx.method + "\"");
-
-    // Logging to instructor DB
-    logLoginAttempt(attacker, ctx);
+    debugLog('[Auth] Attacker ' + attacker.ipAddress + ' trying to authenticate with \'' + ctx.method + '\'');
 
     if (ctx.method === 'password' && ctx.username) {
-      // The attacker is trying to authenticate using the "password" authentication method
+      // The attacker is trying to authenticate using the 'password' authentication method
 
       // Logging to student file
-      loginAttempts.write(moment().format("YYYY-MM-DD HH:mm:ss.SSS") + delimiter + attacker.ipAddress + delimiter +
-        ctx.method + delimiter + ctx.username + delimiter + ctx.password + "\n");
+      loginAttempts.write(moment().format('YYYY-MM-DD HH:mm:ss.SSS') + delimiter + attacker.ipAddress + delimiter +
+        ctx.method + delimiter + ctx.username + delimiter + ctx.password + '\n');
 
       // ----------- Automatic Access START Block --------------
 
       // Handle Attempt if automatic access is enabled
-      if (autoAccess === true && autoBarrier === true) {
+      if (autoAccessEnabled && !autoAccessThresholdAchieved) {
         handleAttempt(attacker);
       }
 
       // If automatic access is enabled and the barrier is down, then compromise the honeypot by
       // adding the user to the container if it does not exist and modifying the password for
       // specified user supplied by the attacker (ctx.username)
-      if (autoAccess === true && autoBarrier === false && ctx.username != '' && ctx.password != '') {
-        autoAccess = false;
+      if (autoAccessEnabled && autoAccessThresholdAchieved && ctx.username != '' && ctx.password != '') {
+        autoAccessEnabled = false;
 
-        debugLog("[Auto Access] Compromising the honeypot");
+        debugLog('[Auto Access] Compromising the honeypot');
 
-        debugLog("[Auto Access] Adding the following credentials: \""
-          + ctx.username + ":" + ctx.password +"\"");
+        debugLog(`[Auto Access] Adding the following credentials: '${ctx.username}:${ctx.password}'`);
 
-        ctx.username = ctx.username.replace(';', '').replace("'", ''); // Preliminary Caution
-        ctx.password = ctx.password.replace(';', '').replace("'", ''); // Preliminary Caution
+        ctx.username = ctx.username.replace(';', '').replace(`'`, ''); // Preliminary Caution
+        ctx.password = ctx.password.replace(';', '').replace(`'`, ''); // Preliminary Caution
 
         // Add user to the container if it does not exist
         // Not successful if the user tries to do command injection
         // SpawnSync and php script handles command injection
-        spawnSync("php", [path.resolve(__dirname, '../lxc/add_user.php'), containerID, ctx.username]);
+        spawnSync('bash', [ path.join(__dirname, '../lxc/add_user.sh'), containerName, ctx.username ]);
 
         // Load the credentials
         // Again not successful if the attacker uses command injection
-        spawnSync("php", [path.resolve(__dirname, '../lxc/load_credentials.php'), containerID, ctx.username, ctx.password]);
+        spawnSync('bash', [ path.join(__dirname, '../lxc/load_credentials.sh'), containerName, ctx.username, ctx.password.replace(/`/g, '') ]);
 
-      } else if (autoAccess === true && autoBarrier === true) {
+        debugLog('[Auto Access] Auto-access is now disabled for the remainder of this MITM server instance');
+      } else if (autoAccessEnabled && !autoAccessThresholdAchieved) {
         // Barrier has not yet been broken
-        cb("Not yet compromised", null, ctx, attacker);
+        cb('Not yet compromised', null, ctx, attacker);
         return;
       }
 
@@ -350,38 +314,38 @@ function handleAttackerAuth(attacker, cb) {
 
       let passwordEntry = getPassEntry(ctx.username);
 
-      //debugLog("[Auth] Password Field on container: " + passwordEntry);
+      //debugLog('[Auth] Password Field on container: ' + passwordEntry);
 
       if (passwordEntry === null) {
-        cb("Invalid credentials - User does not exist", undefined, ctx, attacker);
+        cb('Invalid credentials - User does not exist', undefined, ctx, attacker);
         return;
       }
 
       if (passwordEntry === '*' || passwordEntry === '!') {
-        cb("Invalid credentials - Container user is disabled", undefined, ctx, attacker);
+        cb('Invalid credentials - Container user is disabled', undefined, ctx, attacker);
         return;
       }
 
       try {
         if (crypt3(ctx.password, passwordEntry) !== passwordEntry) {
-          cb("Invalid credentials - Password Authentication Failure", undefined, ctx, attacker);
+          cb('Invalid credentials - Password Authentication Failure', undefined, ctx, attacker);
           return;
         } else if (crypt3(ctx.password, passwordEntry) === passwordEntry) {
-          debugLog("[Auth] Valid credentials - Password Authentication");
+          debugLog('[Auth] Valid credentials - Password Authentication');
         }
       } catch(err) {
         // If authentication threw an exception
-        debugLog("[Auth] Exception thrown by crypt: " + err);
+        debugLog('[Auth] Exception thrown by crypt: ' + err);
       }
 
       // ----------- END Preliminary Authentication --------------
 
       // Preliminary Authentication is successful, let's try to login using the attacker's credentials
       // Note: It may still fail because of the settings (/etc/ssh/sshd_config) that are put on the container SSH server
-      debugLog('[LXC] Attempting to connect to the honeypot: ' + containerIP);
+      debugLog('[LXC] Attempting to connect to the honeypot: ' + containerIp);
 
       connectToLXC({
-        host: containerIP,
+        host: containerIp,
         port: 22,
         username: ctx.username,
         password: ctx.password
@@ -390,7 +354,7 @@ function handleAttackerAuth(attacker, cb) {
           if (err.toString().indexOf('EHOSTUNREACH') !== -1) {
             errorLog('[LXC] Cannot reach the container!');
           } else if (err.toString() === 'Error: All configured authentication methods failed') {
-            debugLog("[LXC] Authentication Failed");
+            debugLog('[LXC] Authentication Failed');
           }
 
           cb(err.toString(), lxc, ctx, attacker);
@@ -398,13 +362,12 @@ function handleAttackerAuth(attacker, cb) {
 
         cb(err, lxc, ctx, attacker);
       });
-    } else if (ctx.method === 'publickey' && config.local === false) {
-      // Cannot fetch public keys from container when container does not exist (config.local = true)
-      // The attacker is trying to authenticate using the "publickey" authentication method
+    } else if (ctx.method === 'publickey') {
+      // The attacker is trying to authenticate using the 'publickey' authentication method
 
       // Logging to student file
-      loginAttempts.write(moment().format("YYYY-MM-DD HH:mm:ss.SSS") + delimiter + attacker.ipAddress + delimiter +
-        ctx.method + delimiter + ctx.username + delimiter + ctx.key.data.toString('base64') + "\n");
+      loginAttempts.write(moment().format('YYYY-MM-DD HH:mm:ss.SSS') + delimiter + attacker.ipAddress + delimiter +
+        ctx.method + delimiter + ctx.username + delimiter + ctx.key.data.toString('base64') + '\n');
 
       // Verify that the public key sent by the attacker matches one of the public keys in the
       // ~/.ssh/authorized_keys. Note: ~ is the home directory of the supplied username
@@ -421,12 +384,12 @@ function handleAttackerAuth(attacker, cb) {
         // access to the honeypot system for the attacker.
         insertAuthKeys(homeDir, DEFAULT_KEYS.PUBLIC);
         connectToLXC({
-          host: containerIP,
+          host: containerIp,
           port: 22,
           username: ctx.username,
           key: DEFAULT_KEYS.PRIVATE,
         }, function (err, lxc) { // function called after the login attempt to the container
-          // Once we have successfully connected, restore the original "authorized_keys" file
+          // Once we have successfully connected, restore the original 'authorized_keys' file
           setAuthKeys(homeDir, origAuthKeys);
           // Set the time back to make it look like we didn't work with this file
           setFileTimes(authKeysPath, stats.atime, stats.mtime);
@@ -434,16 +397,16 @@ function handleAttackerAuth(attacker, cb) {
         });
       }
       else {
-        cb("Publickey authentication failed", undefined, ctx, attacker);
+        cb('Publickey authentication failed', undefined, ctx, attacker);
       }
-    } else if (ctx.method === "keyboard-interactive") {
+    } else if (ctx.method === 'keyboard-interactive') {
       // Reject keyboard-interactive authentication.
-      // This SSH server can simply do "password" and "publickey" authentication
-      cb("Keyboard-interactive is not supported", undefined, ctx, attacker);
-    } else if (ctx.method === "none") {
+      // This SSH server can simply do 'password' and 'publickey' authentication
+      cb('Keyboard-interactive is not supported', undefined, ctx, attacker);
+    } else if (ctx.method === 'none') {
       // Clients use this authentication method to determine the available authentication methods on the SSH server
       // since the SSH server will reject the response with the available authentication methods.
-      cb("No authentication method provided", undefined, ctx, attacker);
+      cb('No authentication method provided', undefined, ctx, attacker);
     } else {
       // ??? What is this attacker trying to do?
       cb('Unknown authentication method', undefined, ctx, attacker);
@@ -452,12 +415,11 @@ function handleAttackerAuth(attacker, cb) {
 }
 
 /**
- * Used when autoAccess is enabled. Determines if the attacker is allowed automatic access to the honeypot
+ * Used when autoAccessEnabled is enabled. Determines if the attacker is allowed automatic access to the honeypot
  * @param attacker
  */
 function handleAttempt(attacker) {
-  // If autoAccess is disabled, what are we doing here?
-  if (autoAccess === false) {
+  if (!autoAccessEnabled) {
     return;
   }
 
@@ -474,21 +436,21 @@ function handleAttempt(attacker) {
   });
 
   // If we have not seen this IP before
-  if (previouslySeen === false) {
+  if (!previouslySeen) {
     let randomAllowCalculation = null;
 
     // Normal Distribution Barrier
-    if (config.autoAccess.barrier.normalDist.enabled) {
+    if (autoAccessNormalDistributionMean >= 0) {
       randomAllowCalculation = Math.round(autoRandomNormal());
     }
     // Fixed Number of Attempts Barrier
-    else if (config.autoAccess.barrier.fixed.enabled) {
-      randomAllowCalculation = config.autoAccess.barrier.fixed.attempts;
+    else if (autoAccessFixed >= 0) {
+      randomAllowCalculation = autoAccessFixed;
     }
     // No way to calculate randomAllow...
     else
     {
-      errorLog("[Auto Access] Unknown calculation for randomAllow!");
+      errorLog('[Auto Access] Unknown calculation for randomAllow!');
       randomAllowCalculation = Number.MAX_VALUE;
     }
 
@@ -510,10 +472,10 @@ function handleAttempt(attacker) {
 
   // If the number of attempts is greater than or equal to the set threshold for this attacker
   if (previouslySeen.attempts >= previouslySeen.randomAllow) {
-    autoBarrier = false;
+    autoAccessThresholdAchieved = true;
   }
 
-  debugLog("[Auto Access] Attacker: " + ipAddress + ", Threshold: " + previouslySeen.randomAllow + ", Attempts: " + previouslySeen.attempts);
+  debugLog('[Auto Access] Attacker: ' + ipAddress + ', Threshold: ' + previouslySeen.randomAllow + ', Attempts: ' + previouslySeen.attempts);
 }
 
 
@@ -534,18 +496,18 @@ function handleAttackerAuthCallback(err, lxc, authCtx, attacker) {
 
     // -------- Attacker Limit Number of Attempts per Connection START ------------
 
-    // If the authentication method was not "none", then increment the login attempts count
+    // If the authentication method was not 'none', then increment the login attempts count
     if (authCtx.method !== 'none') {
       attacker.numberOfAttempts++;
-      debugLog("[Auth] Attacker: " + attacker.ipAddress + " has so far made " + attacker.numberOfAttempts +
-        " attempts. Remaining: " +
-        (config.server.maxAttemptsPerConnection - attacker.numberOfAttempts) + " attempts");
+      debugLog('[Auth] Attacker: ' + attacker.ipAddress + ' has so far made ' + attacker.numberOfAttempts +
+        ' attempts. Remaining: ' +
+        (maxAttemptsPerConnection - attacker.numberOfAttempts) + ' attempts');
     }
 
     // If the number of attempts for this attacker connection is equal to
     // the maximum number of attempts allowed per connection, then close the connection on the attacker
-    if (attacker.numberOfAttempts === config.server.maxAttemptsPerConnection) {
-      debugLog("[Connection] Max Login Attempts Reached - Closing connection on attacker");
+    if (attacker.numberOfAttempts === maxAttemptsPerConnection) {
+      debugLog('[Connection] Max Login Attempts Reached - Closing connection on attacker');
       attacker.end();
     }
 
@@ -557,22 +519,22 @@ function handleAttackerAuthCallback(err, lxc, authCtx, attacker) {
       attacker.removeListener('end', attackerEndBeforeAuthenticated);
 
       debugLog('[LXC-Auth] Attacker authenticated and is inside container');
-      let sessionId = uuid.v1(); // assign UUID
+      const attackTimestamp = moment();
+      const sessionId = attackTimestamp.format('YYYY_MM_DD_HH_mm_ss_SSS');
 
       // make a session screen output stream
-      let screenWriteOutputStream = fs.createWriteStream(
-        path.resolve(config.logging.streamOutput, sessionId + '.gz')
-      );
+      const screenWriteOutputStream = fs.createWriteStream(path.join(loggingAttackerStreams, `${sessionId}.log.gz`));
+      const keystrokesOutputStream = fs.createWriteStream(path.join(loggingKeystrokes, `${sessionId}.log`));
 
       // Make a Gzip handler to automatically compress the file on the fly
-      let screenWriteGZIP = zlib.createGzip({
+      const screenWriteGZIP = zlib.createGzip({
         flush : zlib.constants.Z_FULL_FLUSH
       });
       screenWriteGZIP.pipe(screenWriteOutputStream);
 
-      /*let year = dateTime.getFullYear(), month = ("0" + dateTime.getMonth()).slice(-2),
-              date = ("0" + dateTime.getDate()).slice(-2), hour = ("0" + dateTime.getHours()).slice(-2),
-              minutes = ("0" + dateTime.getMinutes()).slice(-2), seconds = ("0" + dateTime.getSeconds()).slice(-2),
+      /*let year = dateTime.getFullYear(), month = ('0' + dateTime.getMonth()).slice(-2),
+              date = ('0' + dateTime.getDate()).slice(-2), hour = ('0' + dateTime.getHours()).slice(-2),
+              minutes = ('0' + dateTime.getMinutes()).slice(-2), seconds = ('0' + dateTime.getSeconds()).slice(-2),
               milliseconds = dateTime.getMilliseconds();*/
 
       let credential = null;
@@ -583,32 +545,29 @@ function handleAttackerAuthCallback(err, lxc, authCtx, attacker) {
         credential = authCtx.key.data.toString('base64');
       }
 
-      let metadata = containerIP + '_' + containerID + "_" + attacker.ipAddress + "_" +
-        moment().format("YYYY_MM_DD_HH_mm_ss_SSS") + "_" + sessionId + "\n" +
-        "Container SSH Server: " + containerIP + "\n" +
-        "Container ID: " + containerID + "\n" +
-        "Attacker IP Address: " + attacker.ipAddress + "\n" +
-        "Login Method: " + authCtx.method + "\n" +
-        "Attacker Username: " + authCtx.username + "\n" +
-        "Attacker Password: " + credential + "\n" +
-        "Date: " + moment().format("YYYY-MM-DD HH:mm:ss.SSS") + "\n" +
-        "Session ID: " + sessionId + "\n" +
-        "-------- Attacker Stream Below ---------\n";
+      const metadata = [
+        `Container Name: ${containerName}`,
+        `Container IP: ${containerIp}`,
+        `Attacker IP: ${attacker.ipAddress}`,
+        `Attack Timestamp: ${attackTimestamp.format(`YYYY-MM-DD HH:mm:ss.SSS`)}`,
+        `Attacker IP Address: ${attacker.ipAddress}`,
+        `Login Method: ${authCtx.method}`,
+        `Attacker Username: ${authCtx.username}`,
+        `Attacker Password: ${credential}`,
+        `Session ID: ${sessionId}`,
+        `-------- Attacker Stream Below ---------\n`,
+      ];
 
-      let metadataBuffer = new Buffer.from(metadata, "utf-8");
-      screenWriteGZIP.write(metadataBuffer);
-
-      // Log to instructor DB
-      logLogin(attacker, authCtx, sessionId);
+      screenWriteGZIP.write(metadata.join('\n'));
 
       // Log to student file
-      logins.write(moment().format("YYYY-MM-DD HH:mm:ss.SSS") + delimiter + attacker.ipAddress + delimiter +
-        sessionId + "\n");
+      logins.write(attackTimestamp.format('YYYY-MM-DD HH:mm:ss.SSS') + delimiter + attacker.ipAddress + delimiter +
+        sessionId + '\n');
 
       attacker.once('session', function (accept) {
         let session = accept();
         if (session) {
-          handleAttackerSession(session, lxc, sessionId, screenWriteGZIP);
+          handleAttackerSession(session, lxc, sessionId, screenWriteGZIP, keystrokesOutputStream);
         }
       });
       attacker.on('end', function () {
@@ -635,8 +594,9 @@ function handleAttackerAuthCallback(err, lxc, authCtx, attacker) {
  * @param lxc
  * @param sessionId
  * @param screenWriteStream
+ * @param keystrokesOutputStream
  */
-function handleAttackerSession(attacker, lxc, sessionId, screenWriteStream) {
+function handleAttackerSession(attacker, lxc, sessionId, screenWriteStream, keystrokesOutputStream) {
   let attackerStream, rows, cols, term;
   let lxcStream;
 
@@ -660,17 +620,10 @@ function handleAttackerSession(attacker, lxc, sessionId, screenWriteStream) {
   // Non-interactive mode
   attacker.on('exec', function (accept, reject, info) {
     debugLog('[EXEC] Noninteractive mode attacker command: ' + info.command);
-    // Log command to DB
-    /*socket.emit('command', {
-        sessionId : sessionId,
-        line : info.command,
-        keystrokes : [], // intentionally empty to specify that this is a non-interactive session
-        timestamp : new Date()
-      });*/
+    keystrokesOutputStream.write(`${moment().format('YYYY-MM-DD HH:mm:ss.SSS')} [Noninteractive Mode] ${info.command}\n`);
 
-    let execStatement = 'Noninteractive mode attacker command: ' + info.command + '\n--------- Output Below -------\n';
+    const execStatement = 'Noninteractive mode attacker command: ' + info.command + '\n--------- Output Below -------\n';
 
-    let execStatementBuffer = new Buffer.from(execStatement, "utf-8");
     screenWriteStream.write(execStatementBuffer);
 
     lxc.exec(info.command, function (err, lxcStream) {
@@ -716,12 +669,7 @@ function handleAttackerSession(attacker, lxc, sessionId, screenWriteStream) {
       reader.on('line', function (line) {
         debugLog('[SHELL] line from reader: ' + line.toString());
         debugLog('[SHELL] Keystroke buffer: ' + keystrokeBuffer);
-        /*socket.emit('command', {
-                sessionId : sessionId,
-                line : line,
-                keystrokes : keystrokeBuffer,
-                timestamp : new Date()
-              });*/
+        keystrokesOutputStream.write(`${moment().format('YYYY-MM-DD HH:mm:ss.SSS')} [Full Line Parsed] ${line.toString()}\n`);
         keystrokeBuffer = []; // reset char array
       });
 
@@ -731,16 +679,20 @@ function handleAttackerSession(attacker, lxc, sessionId, screenWriteStream) {
       });
       attackerStream.on('data', function (data) {
         debugLog('[SHELL] Attacker Keystroke: ' + printAscii(data.toString()));
-        keystrokeFullBuffer += moment().format('YYYY-MM-DD HH:mm:ss.SSS') + ': ' + printAscii(data.toString()) + "\n";
+        keystrokeFullBuffer += moment().format('YYYY-MM-DD HH:mm:ss.SSS') + ': ' + printAscii(data.toString()) + '\n';
 
         lxcStream.write(data);
         // record all char code of keystrokes
         let dataString = data.toString();
         let dataCopy = '';
+        const now = moment().format('YYYY-MM-DD HH:mm:ss.SSS');
         for (let i = 0, len = dataString.length; i < len; i++) {
-          keystrokeBuffer.push(dataString.charCodeAt(i));
-          if (dataString.charCodeAt(i) !== 3) { // 3 is ctrl-c, readline doesn't like ctrl-c
-            dataCopy += dataString.charAt(i);
+          const charCode = dataString.charCodeAt(i);
+          const character = dataString.charAt(i);
+          keystrokesOutputStream.write(`${now} [Keystroke] ${printAscii(character)} - ${charCode}\n`);
+          keystrokeBuffer.push(charCode);
+          if (charCode !== 3) { // 3 is ctrl-c, readline doesn't like ctrl-c
+            dataCopy += character;
           }
         }
 
@@ -752,7 +704,7 @@ function handleAttackerSession(attacker, lxc, sessionId, screenWriteStream) {
         debugLog('[SHELL] Attacker ended the shell');
 
         // Keystroke Writing
-        screenWriteStream.write("-------- Attacker Keystrokes ----------\n");
+        screenWriteStream.write('-------- Attacker Keystrokes ----------\n');
         screenWriteStream.write(keystrokeFullBuffer);
         lxcStream.end();
       });
@@ -761,7 +713,7 @@ function handleAttackerSession(attacker, lxc, sessionId, screenWriteStream) {
         let position = lxcStreams.indexOf(lxcStream);
         if (position > -1) {
           lxcStreams.splice(position, 1);
-          debugLog("[LXC Streams] Removed Stream | Total streams: " + lxcStreams.length);
+          debugLog('[LXC Streams] Removed Stream | Total streams: ' + lxcStreams.length);
         }
         debugLog('[SHELL] Honeypot ended shell');
         attackerStream.end();
@@ -769,7 +721,7 @@ function handleAttackerSession(attacker, lxc, sessionId, screenWriteStream) {
 
       // Keep track of LXC Streams
       lxcStreams.push(lxcStream);
-      debugLog("[LXC Streams] New Stream | Total Streams: " + lxcStreams.length);
+      debugLog('[LXC Streams] New Stream | Total Streams: ' + lxcStreams.length);
     });
   });
 }
@@ -810,7 +762,7 @@ function connectToLXC(opts, cb) {
   }
 
   lxc.on('ready', function () { // allow authenticate
-    autoAccess = false; // Attacker is successfully getting inside the container
+    autoAccessEnabled = false; // Attacker is successfully getting inside the container
 
     return cb(undefined, lxc);
   });
@@ -971,268 +923,49 @@ function setFileTimes(file, atime, mtime) {
  * ----------------------- Authentication END Block ---------------------------------
  ************************************************************************************/
 
-/************************************************************************************
- * ----------- Do NOT modify anything below - Instructor Use ------------------------
- ************************************************************************************/
-
-/************************************************************************************
- * ----------- Do NOT modify anything below - Instructor Use ------------------------
- ************************************************************************************/
-
-/************************************************************************************
- * ----------- Do NOT modify anything below - Instructor Use ------------------------
- ************************************************************************************/
-
-/************************************************************************************
- * ----------- Do NOT modify anything below - Instructor Use ------------------------
- ************************************************************************************/
-
-function getNetworkInterfaceDetails() {
-  let networkInterfaces = os.networkInterfaces();
-  let interfaceDetailsShort = {};
-
-  // Iterate through each interface name
-  Object.keys(networkInterfaces).forEach(function(interfaceName) {
-
-    // Iterate through each interface address
-    networkInterfaces[interfaceName].forEach(function(interface_) {
-
-      // If interface is not IPv4 and/or is internal
-      if (interface_.family !== 'IPv4' || interface_.internal !== false) {
-        return;
-      }
-
-      if (interfaceDetailsShort[interfaceName] === undefined) {
-        interfaceDetailsShort[interfaceName] = [{
-          'cidr' : interface_.cidr,
-          'mac'  : interface_.mac,
-        }]
-      }
-      else
-      {
-        interfaceDetailsShort[interfaceName].push({
-          'cidr' : interface_.cidr,
-          'mac'  : interface_.mac,
-        });
-      }
-    });
-  });
-
-  return interfaceDetailsShort;
-}
-
-
-/**
- * Logs Group ID, Destination Server
- * @param port
- */
-function logStartMITM(port) {
-  if (pool === null) {
-    errorLog("DB connection failed - contact an instructor or a TA");
-    process.exit();
-  }
-
-  let networkInterfaceDetails = getNetworkInterfaceDetails();
-
-  let query = 'INSERT INTO ' +
-    'mitm_start(class_name, group_id, host_interfaces, mitm_listen_ip, mitm_port, auto_access, auto_access_details, container_id, container_ip, container_mount, started_at)' +
-    'VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
-
-  let values = [
-    className,
-    groupId,
-    JSON.stringify(networkInterfaceDetails),
-    config.server.listenIP,
-    port,
-    autoAccess,
-    JSON.stringify(config.autoAccess),
-    containerID,
-    containerIP,
-    containerMountPath,
-    moment().format("YYYY-MM-DD HH:mm:ss.SSS")
-  ];
-
-  pool.query(query, values, function(error, result) {
-    if (error) {
-      errorLog("The following is a DB Error, please contact an instructor or a TA: ", false);
-      errorLog(error, false);
-      return;
-    }
-
-    runID = result.insertId;
-    debugLog("Your session ID: " + runID);
-  });
-}
-
-function DBLog(type, message) {
-  // Error checking
-  if (pool === null || !runID) {
-    return;
-  }
-
-  let query = 'INSERT INTO ' +
-    'mitm_log(mitm_start_id, type, message)' +
-    'VALUES(?, ?, ?)';
-
-  let values = [
-    runID,
-    type,
-    message
-  ];
-
-  logToDB(query, values);
-}
-
-
-function logLoginAttempt(attacker, ctx) {
-  // Error checking
-  if (pool === null || !runID) {
-    return;
-  }
-
-  let query = 'INSERT INTO ' +
-    'mitm_login_attempts(mitm_start_id, attacker_ip, method, username, password, public_key, number_of_attempts, attempted_at) ' +
-    'VALUES(?, ?, ?, ?, ?, ?, ?,?)';
-
-  let password = null;
-  let publicKey = null;
-
-  if (ctx.method === 'password') {
-    password = ctx.password;
-  } else if (ctx.method === 'publickey') {
-    publicKey = ctx.key.data.toString('base64');
-  }
-
-  let values = [
-    runID,
-    attacker.ipAddress,
-    ctx.method,
-    ctx.username,
-    password,
-    publicKey,
-    attacker.numberOfAttempts,
-    moment().format("YYYY-MM-DD HH:mm:ss.SSS"),
-  ];
-
-  logToDB(query, values);
-}
-
-function logLogin(attacker, ctx, sessionId) {
-  // Error checking
-  if (pool === null || !runID) {
-    return;
-  }
-
-  let query = 'INSERT INTO ' +
-    'mitm_logins(mitm_start_id, attacker_ip, session_id, method, username, password, public_key, number_of_attempts, login_at) ' +
-    'VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)';
-
-  let password = null;
-  let publicKey = null;
-
-  if (ctx.method === 'password') {
-    password = ctx.password;
-  } else if (ctx.method === 'publickey') {
-    publicKey = ctx.key.data.toString('base64');
-  }
-
-  let values = [
-    runID,
-    attacker.ipAddress,
-    sessionId,
-    ctx.method,
-    ctx.username,
-    password,
-    publicKey,
-    attacker.numberOfAttempts,
-    moment().format("YYYY-MM-DD HH:mm:ss.SSS"),
-  ];
-
-  logToDB(query, values);
-}
-
-
-function logToDB(query, values) {
-  pool.query(query, values, function(error) {
-    if (error) {
-      errorLog("The following is a DB Error, please contact an instructor or a TA: ", false);
-      errorLog(error, false);
-    }
-  });
-}
-
 // Some housekeeping on exit
 
 process.on('exit', function() {
-  housekeeping("exit");
+  housekeeping('exit');
 });
 process.on('SIGINT', function() {
-  housekeeping("SIGINT");
+  housekeeping('SIGINT');
 });
 process.on('SIGUSR1', function() {
-  housekeeping("SIGUSR1");
+  housekeeping('SIGUSR1');
 });
 process.on('SIGUSR2', function() {
-  housekeeping("SIGUSR2");
+  housekeeping('SIGUSR2');
 });
 process.on('SIGTERM', function() {
-  housekeeping("SIGTERM");
+  housekeeping('SIGTERM');
 });
 process.on('uncaughtException', function(err) {
-  housekeeping("UncaughtException", err.message)
+  if (err.code === 'EADDRINUSE') {
+    debugLog(err.message);
+    errorLog('Another MITM instance or another program is already listening on this port');
+    cleanup = true;
+    process.exit(1);
+  }
+  housekeeping('UncaughtException', err.message)
 });
 
 function housekeeping(type, details = null) {
-  if (cleanup === false) {
-    infoLog("Exiting...");
+  if (!cleanup) {
+    infoLog(`GOT ${type}, shutting down server...`);
     cleanup = true;
-    debugLog("Cleaning up...", false);
+    debugLog('Cleaning up...', false);
 
     if (details !== null) {
-      errorLog("Exception occurred: ", false);
+      errorLog('Exception occurred: ', false);
       console.log(details);
     }
 
     // Cleanup open LXC Streams
-    debugLog("Cleaning up LXC Streams: " + lxcStreams.length);
+    debugLog('Cleaning up LXC Streams: ' + lxcStreams.length);
     lxcStreams.forEach(function(lxcStream) {
       lxcStream.close();
     });
-
-    setTimeout(function() {
-      cleanupPool(type, details, function() {
-        process.exit();
-        logins.end();
-        loginAttempts.end();
-      })}, 1000);
+    setTimeout(() => process.exit(), 3000);
   }
-}
-
-
-function cleanupPool(type, details, cb) {
-  if (pool === null) {
-    cb();
-    return;
-  }
-
-  let query = 'INSERT INTO ' +
-    'mitm_stop (mitm_start_id, exit_type, exit_details, stopped_at) ' +
-    'VALUES(?, ?, ?, ?)';
-
-  let values = [
-    runID,
-    type,
-    details,
-    moment().format("YYYY-MM-DD HH:mm:ss.SSS"),
-  ];
-
-  pool.query(query, values, function(error) {
-    if (error) {
-      errorLog("DB Error:" + error);
-    }
-
-    pool.end(function() {
-      cb();
-    });
-  });
 }
