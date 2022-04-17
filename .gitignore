@@ -17,8 +17,6 @@ npm-debug.log
 node_modules/*
 
 # --------------------
-# MITM Config
+# MITM
 # --------------------
-# Ignore the real mitm.js files
-config/mitm*.js
-!config/mitm_example.js
+logs/

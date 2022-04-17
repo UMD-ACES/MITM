@@ -16,7 +16,7 @@ function readDefaultKeys() {
 }
 
 function readKeys(filename) {
-  const key = fs.readFileSync(path.resolve(__dirname, filename));
+  const key = fs.readFileSync(filename);
 
   return key;
 }
@@ -25,7 +25,7 @@ function readCTKeys(mountPath, ctID) {
   let keys = [];
 
   for (let i = 0; i < keyLocations.length; i++) {
-    const targetPath = path.resolve(mountPath, keyLocations[i]);
+    const targetPath = path.join(mountPath, keyLocations[i]);
     keys[i] = readKeys(targetPath);
   }
 
@@ -39,10 +39,9 @@ function readCTKeys(mountPath, ctID) {
  * @method
  * @param {String} mountPath - Container mount path
  * @param {String} ctID - the name of the target container
- * @param {Function} cb - function(privateKey, publicKey)
  * @throws {Error} - if key generation fails
  */
-function loadKeys(mountPath, ctID, cb) {
+function loadKeys(mountPath, ctID) {
   let keys = [];
 
   try {
@@ -50,13 +49,13 @@ function loadKeys(mountPath, ctID, cb) {
   } catch (e) {
     console.log(e);
     if (e.code === 'EACCES') {
-      console.log("CRITICAL ERROR: Could not read the keys from the container! Permission denied, are you the root user?");
+      console.log('[ERROR] Could not read the keys from the container! Permission denied, are you the root user?');
     } else {
-      console.log("CRITICAL ERROR: Could not read the keys from the container! Is the container mounted/running and is openssh-server installed?");
+      console.log('[ERROR] Could not read the keys from the container! Is the container mounted/running and is openssh-server installed?');
     }
     process.exit(1);
   }
-  return cb(keys);
+  return keys;
 }
 
 /**
@@ -68,8 +67,8 @@ function loadKeys(mountPath, ctID, cb) {
  * @throws {Error} - if mkdirSync fails
  */
 function makeOutputFolder(pathname) {
-  if (!fs.existsSync(path.resolve(pathname))) {
-    fs.mkdirSync(path.resolve(pathname), { recursive: true });
+  if (!fs.existsSync(pathname)) {
+    fs.mkdirSync(pathname, { recursive: true });
   }
 }
 
