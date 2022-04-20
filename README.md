@@ -47,7 +47,9 @@ Enable auto-access by toggling the `--auto-access` option, then you must configu
 
 For normal distribution strategy, the server will allow auto-access after `--auto-access-normal-distribution-mean` number of attempts with the consideration of `--auto-access-normal-distribution-std-dev` to randomize the number of attempts required.
 
-For fixed attempt strategy, the server will simply allow auto-access after --auto-access-fixed` number of attempts.
+For fixed attempt strategy, the server will simply allow auto-access after `--auto-access-fixed` number of attempts.
+
+**Important Note:** The container makes the ultimate decision. The container's `/etc/ssh/sshd_config` file has the ability to deny login credentials even though they may be valid (e.g. `DenyUsers root` or `PermitRootLogin no`)
 
 ## Running MITM in the background
 
