@@ -51,6 +51,14 @@ For fixed attempt strategy, the server will simply allow auto-access after `--au
 
 **Important Note:** The container makes the ultimate decision. The container's `/etc/ssh/sshd_config` file has the ability to deny login credentials even though they may be valid (e.g. `DenyUsers root` or `PermitRootLogin no`)
 
+## Port Redirection
+
+If you use `iptables` to redirect SSH traffic to the MITM server and you redirect it to `localhost` (`127.0.0.1`), you may need to enable the following system option:
+```
+sysctl -w net.ipv4.conf.all.route_localnet=1
+```
+(depending on your system, this configuration may not persist past a reboot)
+
 ## Running MITM in the background
 
 Please check this [wiki page](https://github.com/UMD-ACES/MITM/wiki/Running-in-the-Background) if you would like to run the MITM in the background
