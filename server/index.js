@@ -55,7 +55,7 @@ commander.program
   .requiredOption('-n, --container-name <name>', 'Container name')
   .requiredOption('-i, --container-ip <ip address>', 'Container internal IP address')
   .requiredOption('-p, --mitm-port <number>', 'MITM server listening port', parseInt)
-  .option('-l, --mitm-ip <ip address>', 'MITM server listening ip address', '0.0.0.0')
+  .option('-l, --mitm-ip <ip address>', 'MITM server listening ip address', '127.0.0.1')
   .option('-a, --auto-access', 'Toggle to enable auto-access, must configure one of the auto-access strategies below', false)
   .option('--auto-access-normal-distribution-mean <number>', 'Auto-Access Normal Distribution Strategy: Mean number of attempts before allowing attacker', parseInt)
   .option('--auto-access-normal-distribution-std-dev <number>', 'Auto-Access Normal Distribution Strategy: Standard deviation from the mean to randomize', parseInt)
@@ -101,7 +101,13 @@ const {
 if (debug) {
   console.log('Started with the following options:');
   console.log(options);
+
+  if (/^127\./.test(mitmIp)) {
+    console.log('[WARNING] Your MITM server is listening on the localhost IP address, you will need to set the following sysctl option for iptables to port forward to a localhost IP:');
+    console.log('sysctl -w net.ipv4.conf.all.route_localnet=1');
+  }
 }
+
 /************************************************************************************
  * ---------------------- Logging START Block ---------------------------------------
  ************************************************************************************/
