@@ -630,7 +630,7 @@ function handleAttackerSession(attacker, lxc, sessionId, screenWriteStream, keys
 
     const execStatement = 'Noninteractive mode attacker command: ' + info.command + '\n--------- Output Below -------\n';
 
-    screenWriteStream.write(execStatementBuffer);
+    screenWriteStream.write(execStatement);
 
     lxc.exec(info.command, function (err, lxcStream) {
       if (err) {
