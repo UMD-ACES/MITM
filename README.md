@@ -41,7 +41,7 @@ Auto-access will only be available for 1 automatic access per MITM process, mean
 
 Furthermore, enabling auto-access will essentially disable authentication checks against the SSH server itself until auto-access strategy triggers.
 
-However, auto-access does not block anything, i.e. it will not block IP addresses and it will not other user accounts. The MITM server only intercepts data for recording purposes or for allowing automatic access.
+However, auto-access does not block anything, i.e. it will not block IP addresses and it will not block other user accounts after triggering. The MITM server only intercepts data for recording purposes or for allowing automatic access.
 
 Enable auto-access by toggling the `--auto-access` option, then you must configure one of the two strategies available:
 1. normal distribution
