@@ -44,7 +44,7 @@ let DEFAULT_KEYS = {
 };
 
 // Logging files
-let loginAttempts, logins, delimiter = ';';
+let loginAttempts, logins, logouts, delimiter = ';';
 
 /************************************************************************************
  * ---------------------- MITM Global Variables END Block ---------------------------
@@ -69,6 +69,7 @@ commander.program
   .option('--logging-attacker-streams <string>', 'The directory to log all attacker session streams', path.resolve(__dirname, '../logs/session_streams'))
   .option('--logging-authentication-attempts <string>', 'The directory to log all attacker authentication attempts', path.resolve(__dirname, '../logs/authentication_attempts'))
   .option('--logging-logins <string>', 'The directory to log all successful attacker logins', path.resolve(__dirname, '../logs/logins'))
+  .option('--logging-logouts <string>', 'The directory to log all attacker logouts', path.resolve(__dirname, '../logs/logouts'))
   .option('--logging-keystrokes <string>', 'The directory to log all attacker keystrokes', path.resolve(__dirname, '../logs/keystrokes'))
 ;
 
@@ -95,6 +96,7 @@ const {
   loggingAttackerStreams,
   loggingAuthenticationAttempts,
   loggingLogins,
+  loggingLogouts,
   loggingKeystrokes,
 } = options;
 
@@ -169,6 +171,7 @@ initialize.makeOutputFolder(loggingKeystrokes);
 
 loginAttempts   = fs.createWriteStream(path.resolve(loggingAuthenticationAttempts, containerName + '.log'), { flags: 'a' });
 logins          = fs.createWriteStream(path.resolve(loggingLogins, containerName + '.log'), { flags: 'a' });
+logouts          = fs.createWriteStream(path.resolve(loggingLogouts, containerName + '.log'), { flags: 'a' });
 
 startServer(hostKeys, mitmPort);
 
@@ -567,8 +570,7 @@ function handleAttackerAuthCallback(err, lxc, authCtx, attacker) {
       screenWriteGZIP.write(metadata.join('\n'));
 
       // Log to student file
-      logins.write(attackTimestamp.format('YYYY-MM-DD HH:mm:ss.SSS') + delimiter + attacker.ipAddress + delimiter +
-        sessionId + '\n');
+      logins.write(`${attackTimestamp.format('YYYY-MM-DD HH:mm:ss.SSS')}${delimiter}${attacker.ipAddress}${delimiter}${sessionId}\n`);
 
       attacker.once('session', function (accept) {
         let session = accept();
@@ -578,6 +580,7 @@ function handleAttackerAuthCallback(err, lxc, authCtx, attacker) {
       });
       attacker.on('end', function () {
         const endTimestamp = moment();
+        logouts.write(`${endTimestamp.format('YYYY-MM-DD HH:mm:ss.SSS')}${delimiter}${attacker.ipAddress}${delimiter}${sessionId}\n`);
         debugLog('[Connection] Attacker closed connection');
         screenWriteGZIP.write(`-------- Attacker Stream Above ---------\n`);
         screenWriteGZIP.write(`Attack End Timestamp: ${endTimestamp.format(`YYYY-MM-DD HH:mm:ss.SSS`)}`);
