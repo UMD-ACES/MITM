@@ -65,6 +65,8 @@ sysctl -w net.ipv4.conf.all.route_localnet=1
 
 Please check this [wiki page](https://github.com/UMD-ACES/MITM/wiki/Running-in-the-Background) if you would like to run the MITM in the background
 
+Note the dates on the wiki pages, some of the pages may be out of date
+
 ## Stay up to date
 Run `git pull origin main` inside the /root/MITM directory.
 
