@@ -577,7 +577,10 @@ function handleAttackerAuthCallback(err, lxc, authCtx, attacker) {
         }
       });
       attacker.on('end', function () {
+        const endTimestamp = moment();
         debugLog('[Connection] Attacker closed connection');
+        screenWriteGZIP.write(`-------- Attacker Stream Above ---------\n`);
+        screenWriteGZIP.write(`Attack End Timestamp: ${endTimestamp.format(`YYYY-MM-DD HH:mm:ss.SSS`)}`);
         lxc.end();
         screenWriteGZIP.end(); // end attacker session screen output write stream
         // Log sign out event
