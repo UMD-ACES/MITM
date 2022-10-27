@@ -167,6 +167,7 @@ debugLog('[Init] Auto Access Theshold Achieved: ' + autoAccessThresholdAchieved)
 initialize.makeOutputFolder(loggingAttackerStreams);
 initialize.makeOutputFolder(loggingAuthenticationAttempts);
 initialize.makeOutputFolder(loggingLogins);
+initialize.makeOutputFolder(loggingLogouts);
 initialize.makeOutputFolder(loggingKeystrokes);
 
 loginAttempts   = fs.createWriteStream(path.resolve(loggingAuthenticationAttempts, containerName + '.log'), { flags: 'a' });
