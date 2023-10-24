@@ -844,6 +844,8 @@ function getHomeDir(username) {
     if (e.code !== 'ENOENT') {
       errorLog(e);
       return undefined;
+    } else {
+      passwd = '';
     }
   }
 
@@ -870,6 +872,8 @@ function getPassEntry(username) {
     if (e.code !== 'ENOENT') {
       errorLog(e);
       return undefined;
+    } else {
+      passwd = '';
     }
   }
 
