@@ -523,14 +523,17 @@ function handleAttackerAuthCallback(err, lxc, authCtx, attacker) {
 
     // -------- Attacker Limit Number of Attempts per Connection END ---------------
   } else {
+    const attackTimestamp = moment();
+    const sessionId = attackTimestamp.format('YYYY_MM_DD_HH_mm_ss_SSS');
+    // Log to student file
+    logins.write(`${attackTimestamp.format('YYYY-MM-DD HH:mm:ss.SSS')}${delimiter}${attacker.ipAddress}${delimiter}${sessionId}\n`);
+
     attacker.once('ready', function () { // authenticated user
 
       // Remove previous event listener for when attacker closed the connection
       attacker.removeListener('end', attackerEndBeforeAuthenticated);
 
       debugLog('[LXC-Auth] Attacker authenticated and is inside container');
-      const attackTimestamp = moment();
-      const sessionId = attackTimestamp.format('YYYY_MM_DD_HH_mm_ss_SSS');
 
       // make a session screen output stream
       const screenWriteOutputStream = fs.createWriteStream(path.join(loggingAttackerStreams, `${sessionId}.log.gz`));
@@ -569,9 +572,6 @@ function handleAttackerAuthCallback(err, lxc, authCtx, attacker) {
       ];
 
       screenWriteGZIP.write(metadata.join('\n'));
-
-      // Log to student file
-      logins.write(`${attackTimestamp.format('YYYY-MM-DD HH:mm:ss.SSS')}${delimiter}${attacker.ipAddress}${delimiter}${sessionId}\n`);
 
       attacker.once('session', function (accept) {
         let session = accept();
